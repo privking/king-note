@@ -1,5 +1,9 @@
 # synchronized
 
+[TOC]
+
+
+
 ## synchronized用法
 
 ```java
