@@ -1,2 +1,3 @@
-# gitnote
-gitnote 笔记
+# king-note
+
+笔记
