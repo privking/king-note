@@ -1,6 +1,6 @@
 # ThreadLocalRandom
 
-[TOC]
+
 
 ## ThreadLocalRandom的用处
 

@@ -1,7 +1,5 @@
 # synchronized
 
-[TOC]
-
 
 
 ## synchronized用法
