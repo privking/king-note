@@ -36,12 +36,20 @@
 ## NameNode 概述
 * NameNode是hdfs的核心
 * NameNode也成为master
-* Namenode仅储存HDFS元数据：文件系统中的所有文件的目录树，并跟踪整个集群文件中的文件
+* Namenode仅储存HDFS元数据：文件系统中的所有文件的目录树，文件的分块大小，权限等等，并跟踪整个集群文件中的文件
 * NameNode不存储实际数据或数据集。数据本身存储在DataNode中
 * NameNode知道HDFS中任何给定文件的块列表及其位置。使用此信息可以知道如何从块中构建文件
 * NameNode并不持久化储存每个文件中各个块所在的DataNode位置信息，这些信息会在系统启动的时候从数据节点重建
 * NameNode关闭时，集群无法访问
 * NameNode所在的机器通常会配置之大量RAM(把元数据保存在内存中)
+
+## SecondaryNameNode
+
+* 将edites和fsimage合并，减少NameNode启动时间
+* edites 操作记录，恢复时一条一条指令读取
+* fsimage内存镜像
+* 合并时机1 **fs.checkpoint.period** 默认3600秒
+* 合并时机2 **fs.checkpoint.size**  默认64MB
 
 
 ## DataNode概述
