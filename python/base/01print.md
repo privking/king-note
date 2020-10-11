@@ -142,3 +142,17 @@ print('{:%Y-%m-%d %H:%M:%S}'.format(d))
 
 ```
 
+### 字符串前缀
+
+
+
+```python
+# r/R: 不转义反斜杠
+print(r'input\n')
+# f:字符串内支持大括号内的python 表达式
+print(f'{name} done in {time.time() - t0:.2f} s')
+# b:后面字符串是bytes 类型。
+# u/U:表示unicode字符串
+print(u'我是含有中文字符组成的字符串。')
+```
+
