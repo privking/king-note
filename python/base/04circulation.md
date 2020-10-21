@@ -1,6 +1,6 @@
 # circulation
 
-## range迭代器
+## range生成迭代器
 
 ```python
 # range
@@ -31,6 +31,25 @@ print(2 in list(r3))
 # range() 返回一个迭代器对象
 # 不管有多长 占用空间都相同  因为只存储start stop step
 ```
+
+## 迭代器
+
+```python
+list=[1,2,3,4]
+it = iter(list)    # 创建迭代器对象
+for x in it:
+    print (x, end=" ")
+    
+list=[1,2,3,4]
+it = iter(list)    # 创建迭代器对象 
+while True:
+    try:
+        print (next(it))
+    except StopIteration:
+        sys.exit()
+```
+
+
 
 ## while
 
