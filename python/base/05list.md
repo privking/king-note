@@ -23,6 +23,11 @@ print(lst1)
 lst2 = list(['hello', 'world', 66])
 print(lst2)
 # ['hello', 'world', 66]
+
+# 创建方式3
+var3 = list(range(6))
+print(var3)
+# # [0, 1, 2, 3, 4, 5]
 ```
 
 ## list获取元素

@@ -3,6 +3,8 @@
 ## 创建字典
 
 ```python
+# key不能重复 key有hash的过程
+
 # 字典创建方式
 var1 = {'king':100,"tom":90,"jack":80}
 var2 = dict(king=100,tom=90)
