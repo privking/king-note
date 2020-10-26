@@ -205,6 +205,60 @@ log.segment.bytes=1073741824
 
 ![image-20201025231940665](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20201025231940665-1603639180-99a1ce.png)
 
+## Kafka事务
+
+Kafka在0.11版本中除了引入了Exactly Once语义，还引入了事务特性。**Kafka事务特性是指一系列的生产者生产消息和消费者提交偏移量的操作在一个事务中，或者说是一个原子操作，生产消息和提交偏移量同时成功或者失败**
+
+Kafka中的事务特性主要用于以下两种场景：
+
+- **生产者发送多条消息可以封装在一个事务中，形成一个原子操作。**多条消息要么都发送成功，要么都发送失败。
+- **read-process-write模式：将消息消费和生产封装在一个事务中，形成一个原子操作。**在一个流式处理的应用中，常常一个服务需要从上游接收消息，然后经过处理后送达到下游，这就对应着消息的消费和生成。
+- 引入TransactionId：不同生产实例使用同一个TransactionId表示是同一个事务，可以`跨Session的数据幂等发送`。当具有相同Transaction ID的新的Producer实例被创建且工作时，旧的且拥有相同Transaction ID的Producer将不再工作，避免事务僵死。
+
+> 当事务中仅仅存在Consumer消费消息的操作时，它和Consumer手动提交Offset并没有区别。因此单纯的消费消息并不是Kafka引入事务机制的原因，单纯的消费消息也没有必要存在于一个事务中。
+
+```cpp
+    /**
+     * 初始化事务
+     */
+    public void initTransactions();
+ 
+    /**
+     * 开启事务
+     */
+    public void beginTransaction() throws ProducerFencedException ;
+ 
+    /**
+     * 在事务内提交已经消费的偏移量
+     */
+    public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, 
+                                         String consumerGroupId) throws ProducerFencedException ;
+ 
+    /**
+     * 提交事务
+     */
+    public void commitTransaction() throws ProducerFencedException;
+ 
+    /**
+     * 丢弃事务
+     */
+    public void abortTransaction() throws ProducerFencedException ;
+```
+
+```bash
+KafkaProducer producer = createKafkaProducer(
+  "bootstrap.servers", "localhost:9092",
+  "transactional.id”, “my-transactional-id");
+
+producer.initTransactions();
+producer.beginTransaction();
+producer.send("outputTopic", "message1");
+producer.send("outputTopic", "message2");
+producer.commitTransaction();
+```
+
+
+
 ## 高效读写数据
 
 ### 顺序写磁盘
@@ -212,8 +266,4 @@ log.segment.bytes=1073741824
 Kafka的producer生产数据，要写入到log文件中，写的过程是一直追加到文件末端，为顺序写。官网有数据表明，同样的磁盘，顺序写能到600M/s，而随机写只有100K/s。这与磁盘的机械机构有关，顺序写之所以快，是因为其省去了大量磁头寻址的时间。
 
 ### 零拷贝技术
-
-
-
-
 
