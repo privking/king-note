@@ -168,8 +168,6 @@ mapred --daemon start historyserver
 
 
 ## 错误信息
-![image](D:\github\king-note\hadoop\150850B0C3544C03A711A2AC45B6473D)
-
 
 ```
 将start-dfs.sh，stop-dfs.sh两个文件顶部添加以下参数

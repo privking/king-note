@@ -1,5 +1,3 @@
-
-
 # print
 
 ## print()方法

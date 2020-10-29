@@ -164,6 +164,8 @@ func8(1,2,c=4,d=3)
 var4 = 1  # 全局变量
 age = 1 
 def fun9(a, b):
+    # 若想在函数内部对函数外的变量进行操作，就需要在函数内部声明其为global。
+    # 并且要在函数内部声明
     global age  # 将age声明为全局变量 age必须在外部有定义
     c = a + b  # c:局部变量
 
@@ -173,6 +175,25 @@ def fun9(a, b):
 
 print(age)
 ```
+
+```python
+# nonlocal关键字
+# 使用nonlocal关键字可以在一个嵌套的函数中修改嵌套作用域中的变量。
+def func():
+    name = 'pythontab'
+    def foo():
+        nonlocal name
+        name = 'pythontab.com'
+    foo()
+    print(name)
+func()
+# pythontab.com
+```
+
+### global和nonlocal区别
+
+- 两者的功能不同。global关键字修饰变量后标识该变量是全局变量，对该变量进行修改就是修改全局变量，而nonlocal关键字修饰变量后标识该变量是上一级函数中的局部变量，如果上一级函数中不存在该局部变量，nonlocal位置会发生错误（最上层的函数使用nonlocal修饰变量必定会报错）
+- 两者使用的范围不同。global关键字可以用在任何地方，包括最上层函数中和嵌套函数中，即使之前未定义该变量，global修饰后也可以直接使用，而nonlocal关键字只能用于嵌套函数中，并且外层函数中定义了相应的局部变量
 
 ## 递归函数
 
