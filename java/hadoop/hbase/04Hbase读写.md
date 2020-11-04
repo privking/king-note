@@ -1,4 +1,4 @@
-# Hbase读写
+# Hb ase读写
 
 ## ReginServer架构
 
