@@ -406,5 +406,54 @@ public class DataUtil {
             }
         }
     }
+    
+    
+     public static void scan(Connection conn, String tableName, String nsname) throws Exception {
+        Table table = getTable(conn, tableName, nsname);
+
+        if (table == null) {
+            return;
+        }
+
+        Scan scan = new Scan();
+        //起始行
+        scan.withStartRow(Bytes.toBytes(1));
+        //结束行
+        scan.withStopRow(Bytes.toBytes(50));
+
+//        scan.addColumn()
+//        scan.addFamily()
+//        scan.setFilter()
+//        scan.setLimit()
+//        scan.setxxxxxx
+        //多行result的集合
+        ResultScanner scanner = table.getScanner(scan);
+
+        Iterator<Result> iterator = scanner.iterator();
+        while (iterator.hasNext()) {
+            Result next = iterator.next();
+            parseResult(next);
+
+        }
+        table.close();
+    }
+
+
+    public static void delete(Connection conn, String tableName, String nsname, String rowKey) throws Exception {
+        Table table = getTable(conn, tableName, nsname);
+
+        if (table == null) {
+            return;
+        }
+
+        Delete delete = new Delete(Bytes.toBytes(rowKey));
+//        删除最新 version
+//        delete.addColumn()
+//        删除all version
+//        delete.addColumns()
+//        delete.addFamily()
+        table.delete(delete);
+        table.close();
+    }
 }
 ```
