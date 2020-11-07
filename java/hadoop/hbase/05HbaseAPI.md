@@ -423,6 +423,7 @@ public class DataUtil {
 
 //        scan.addColumn()
 //        scan.addFamily()
+         //设置过滤器
 //        scan.setFilter()
 //        scan.setLimit()
 //        scan.setxxxxxx

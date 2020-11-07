@@ -1,4 +1,4 @@
-# HbaseShell
+# scHbaseShell
 
 Hbase Shell中 分号表示换行
 

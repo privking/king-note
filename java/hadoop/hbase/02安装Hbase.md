@@ -61,3 +61,11 @@ export HBASE_MANAGES_ZK=false
 export JAVA_HOME=/usr/local/jdk1.8.0_161
 ```
 
+backup-masters(备用的主节点)
+
+```
+node1
+node2
+```
+
+ 
