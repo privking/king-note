@@ -1,0 +1,187 @@
+# Stream
+
+## Zip拉链
+
+```scala
+object ZipDemo {
+
+  def main(args: Array[String]): Unit = {
+    //拉链函数
+    val l1 = List(1,2,3,4,5)
+    val l2 = List(6,7,8,9,10)
+    //一对一配对
+    //以短的为标准，多余的抛弃
+    val l3:List[(Int,Int)] = l1.zip(l2)
+
+    //以多的为标准
+    //l1的默认值为-1 l2的默认值为-2
+    val l4:List[(Int,Int)] = l1.zipAll(l2,-1,-2)
+
+    //自己与自己的索引zip
+    val index:List[(Int,Int)] = l1.zipWithIndex
+
+    //unzip
+    //二维元组
+    val unzip:(List[Int],List[Int]) = l3.unzip
+
+  }
+}
+```
+
+## Slide滑窗
+
+```scala
+object SlideDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1,2,3,4,5)
+    //滑窗函数
+    //每次取3个 ，步长为1
+    val it:Iterator[List[Int]] = l1.sliding(3,1)
+    for (elem <- it) {
+      println(elem)
+    }
+  }
+  //List(1, 2, 3)
+  //List(2, 3, 4)
+  //List(3, 4, 5)
+}
+```
+
+## map
+
+```scala
+object MapDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    //一进一出
+    val res = l1.map(x => x * 2)
+    val res1 = l1.map(_ * 2)
+  }
+}
+```
+
+## foreach
+
+```scala
+object ForeachDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    l1.foreach(println(_))
+    l1.foreach(println)
+
+   //部分应用函数
+    val square = math.pow(_,2)
+    val d = square(2)
+
+    //相当于还是函数
+    val prt = println(_)
+    prt(1)
+    l1.foreach(prt)
+  }
+}
+
+```
+
+## filter
+
+```scala
+object FilterDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    //过滤出符合条件的
+    val l2: List[Int] = l1.filter(x => x > 1)
+    val l3: List[Int] = l1.filter(_>1)
+  }
+}
+```
+
+## flatten
+
+```scala
+object FlattenDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(List(1,2), List(1,3), List(1,2), List(1,2))
+    //拍平 
+    //降维 List(1, 2, 1, 3, 1, 2, 1, 2)
+    val flatten = l1.flatten
+    println(flatten)
+  }
+}
+```
+
+## flatMap
+
+```scala
+object FlatMapDemo {
+  def main(args: Array[String]): Unit = {
+    val l1: List[String]  = List("hello world","hello hello","haha kkk")
+    val l2: List[String] = l1.map(x=>x.split(" ")).flatten
+    //确保flatMap返回是一个集合
+    //等价于 map+flatten
+    val l3: List[String] = l1.flatMap(x=>x.split(" "))
+  }
+}
+```
+
+## reduce
+
+```scala
+object ReduceDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    println(l1.reduce(_ + _))
+  }
+}
+```
+
+## fold
+
+```scala
+object FlodDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    //fold折叠
+    //解决的reduce 最后结果类型单一化
+    //fold =====>foldLeft
+    val res = l1.foldLeft("==")((x,y)=>x+y)
+    println(res)
+
+
+    val res1 = l1.foldRight("==")((x,y)=>x+y)
+    println(res1)
+
+    //==1234
+    //1234==
+  }
+}
+```
+
+```scala
+object FoldDemo2 {
+  def main(args: Array[String]): Unit = {
+    val map1 = Map("1" -> 1, "2" -> 2)
+    val map2 = Map("1" -> 10, "3" -> 9)
+
+      //合并两个map value相加
+    val map3 = map1.foldLeft(map2)((m, x) => {
+      m + (x._1 -> (m.getOrElse(x._1, 0) + x._2))
+    })
+    println(map3.mkString(","))
+//    1 -> 11,3 -> 9,2 -> 2
+  }
+}
+```
+
+## groupBy
+
+```scala
+object GroupDemo {
+  def main(args: Array[String]): Unit = {
+    val l1 = List(1, 2, 3, 4)
+    val map = l1.groupBy(_%2)
+    
+    println(map)
+    //Map(1 -> List(1, 3), 0 -> List(2, 4))
+  }
+}
+```
