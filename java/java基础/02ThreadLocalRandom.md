@@ -1,7 +1,5 @@
 # ThreadLocalRandom
 
-
-
 ## ThreadLocalRandom的用处
 
 * 在多线程下，使用 java.util.Random 产生的实例来产生随机数是线程安全的，但深挖 Random 的实现过程，会发现多个线程会竞争同一 seed 而造成性能降低。
@@ -11,11 +9,7 @@
     * 根据老的 seed 生成新的 seed
 由新的 seed 计算出新的随机数
     
-* 其中，第二步的算法
-
-    
-
-    是固定的，如果每个线程并发地获取同样的 seed，那么得到的随机数也是一样的。为了避免这种情况，Random 使用 CAS 操作保证每次只有一个线程可以获取并更新 seed，失败的线程则需要自旋重试。
+* 其中，第二步的算法是固定的，如果每个线程并发地获取同样的 seed，那么得到的随机数也是一样的。为了避免这种情况，Random 使用 CAS 操作保证每次只有一个线程可以获取并更新 seed，失败的线程则需要自旋重试。
 
 * 因此，在多线程下用 Random 不太合适，为了解决这个问题，出现了 ThreadLocalRandom，在多线程下，它为每个线程维护一个 seed 变量，这样就不用竞争了。
 
@@ -109,14 +103,14 @@ final long nextSeed() {
 }
 ```
 
-* 好了，问题来了！这里返回的值是 ==r = UNSAFE.getLong(t, SEED) + GAMMA==，是从 UNSAFE 里取出来的。但问题是，这里取出来的值对不对？或者说，能否取出来？
+* 好了，问题来了！这里返回的值是 **r = UNSAFE.getLong(t, SEED) + GAMMA**，是从 UNSAFE 里取出来的。但问题是，这里取出来的值对不对？或者说，能否取出来？
 
-* 回到示例代码，我们在主线程调用了== TreadLocalRandom== 的 ==current()== 方法，该方法把主线程和主线程的 ==seed== 存入了 ==UNSAFE==。
+* 回到示例代码，我们在主线程调用了 **TreadLocalRandom**的 **current()** 方法，该方法把主线程和主线程的 **seed** 存入了 **UNSAFE**。
 
-* 接下来，我们在非主线程调用 ==nextInt()==，但非主线程和 seed 的键值对之前并没有存入 UNSAFE 。但我们却从 UNSAFE 里取非主线程的 seed 值，虽然我不知道取出来的 seed 到底是什么，但肯定不是多线程下想要的结果，而这也导致了多线程下产生的随机数是重复的。
+* 接下来，我们在非主线程调用 **nextInt()**，但非主线程和 seed 的键值对之前并没有存入 UNSAFE 。但我们却从 UNSAFE 里取非主线程的 seed 值，虽然我不知道取出来的 seed 到底是什么，但肯定不是多线程下想要的结果，而这也导致了多线程下产生的随机数是重复的。
 
 ## ThreadLocalRandom多线程下正确用法
-* 结合上述分析，正确地使用 ThreadLocalRandom，肯定需要给每个线程初始化一个 seed，那就需要调用== ThreadLocalRandom.current()== 方法。
+* 结合上述分析，正确地使用 ThreadLocalRandom，肯定需要给每个线程初始化一个 seed，那就需要调用**ThreadLocalRandom.current()**方法。
 * 那么有个疑问，在每个线程里都调用 ThreadLocalRandom.current()，会产生多个 ThreadLocalRandom 实例吗？
     * 不会的
 

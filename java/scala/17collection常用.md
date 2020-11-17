@@ -48,3 +48,23 @@ def main(args: Array[String]): Unit = {
 
 }
 ```
+
+## 将java的集合与scala的集合互转
+
+```scala
+object convertDemo {
+  def main(args: Array[String]): Unit = {
+    import scala.collection.JavaConverters._
+    var list = new util.ArrayList[Int]()
+    list.add(1)
+    val l2 = list.asScala
+    l2 += 1
+    
+    val list3 = l2.asJava
+    list3.add(1)
+    println(l2)
+    println(list3)
+  }
+}
+```
+
