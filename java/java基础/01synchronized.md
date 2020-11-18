@@ -14,13 +14,13 @@ public class ThreadDemo {
     public synchronized  void access1(){
         System.out.println("2222");
     }
-    //类锁
+    //对象锁
     public void access2(){
         synchronized (this){
             System.out.println("3333");
         }
     }
-    //对象锁
+    //类锁
     public static void access3(){
         synchronized (ThreadDemo.class) {
             System.out.println("4444");
@@ -68,3 +68,5 @@ public class ThreadDemo {
 
 
 ![clipboard](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clipboard-1599154333-229ab0.png)
+
+ https://blog.csdn.net/scdn_cp/article/details/86491792s
