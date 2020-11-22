@@ -209,7 +209,7 @@ s3-> 32------48
 
 ![image-20201118161537857](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20201118161537857-1605687337-1ad958.png)
 
-## HashMap 异常
+## HashMap 异常（fail-fast）
 
 在put等会改变Map的操作中都会 modCount++
 
@@ -406,48 +406,7 @@ void afterNodeAccess(Node<K,V> e) { // move node to last
     }
 
 //被重写方法
-protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
+prot boolean removeEldestEntry(Map.Entry<K,V> eldest) {
         return false;
     }
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
