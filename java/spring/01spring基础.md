@@ -1,7 +1,7 @@
 # spring 基础
 
 ## 什么是IOC
-* 控制反转（inversion of control），面向对象编程中的一种设计原则，可以用来降低代码的耦合度。其中最常见的方式是依赖注入（Dependency Injection,DI），还有一种方式叫做“依赖查找”（Dependency Lookip）
+* 控制反转（inversion of control），面向对象编程中的一种设计原则，可以用来降低代码的耦合度。其中最常见的方式是依赖注入（Dependency Injection,DI），还有一种方式叫做“依赖查找”（Dependency Lookup）
 * DI是实现IOC的一种手段
 
 ## 注入的两种方法

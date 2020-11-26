@@ -29,7 +29,7 @@
 
 
 ## spring 5.x日志
-* 新模块spring-jcl，对commoms-logging修改,所以直接加log4j不行
+* 新模块spring-jcl，对commons-logging修改,所以直接加log4j不行
 * 支持log4j2，slf4j,jul
 ![clipboard](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clipboard-1599203962-a230f2.png)
 ![clipboard](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clipboard-1599203976-ae9b7e.png)
