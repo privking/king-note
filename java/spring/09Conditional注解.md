@@ -16,7 +16,7 @@ public interface Condition {
 }
 ```
 
-```
+```java
 public class WindowsCondition implements Condition {
  
     /**
