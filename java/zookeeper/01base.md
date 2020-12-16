@@ -85,3 +85,37 @@ BASE理论是在CAP定理上，依据行业实践经验，逐渐演化出来的�
 分布式锁，这个主要得益于ZooKeeper为我们保证了数据的强一致性。锁服务可以分为两类，一个是保持独占，另一个是控制时序。
 
 所谓保持独占，就是所有试图来获取这个锁的客户端，最终只有一个可以成功获得这把锁。通常的做法是把zk上的一个znode看作是一把锁，通过create znode的方式来实现。所有客户端都去创建 /distribute_lock 节点，最终成功创建的那个客户端也即拥有了这把锁。 控制时序，就是所有试图来获取这个锁的客户端，最终都是会被安排执行，只是有个全局时序了。做法和上面基本类似，只是这里 /distribute_lock 已经预先存在，客户端在它下面创建临时有序节点（这个可以通过节点的属性控制：CreateMode.EPHEMERAL_SEQUENTIAL来指定）。Zk的父节点（/distribute_lock）维持一份sequence,保证子节点创建的时序性，从而也形成了每个客户端的全局时序。
+
+
+
+## 节点类型
+
+PERSISTENT：持久化节点
+
+PERSISTENT_SEQUENTIAL:持久化顺序节点
+
+EPHEMERAL:临时节点
+
+EPHEMERAL_SEQUENTIAL:临时顺序节点
+
+CONTAINER:容器节点，当容器节点最后一个子节点被删除后，容器节点会自动被删除（有延迟）,只有创建过节点才会被删除
+
+PERSISTENT_WITH_TTL:TTL节点
+
+PERSISTENT_SEQUENTIAL_WITH_TTL:TTL顺序节点
+
+
+
+## Znode详细信息
+
+- czxid，创建（create）该 znode 的 zxid
+- mzxid，最后一次修改（modify）该 znode 的 zxid
+- pzxid，最后一次修改该 znode **子节点**的 zxid
+- ctime，创建该 znode 的时间
+- mtime，最后一次修改该 znode 的时间
+- dataVersion，该节点内容的版本，每次修改内容，版本都会增加
+- cversion，该节点子节点的版本
+- aclVersion，该节点的 ACL 版本
+- ephemeralOwner，如果该节点是临时节点（ephemeral node），会列出该节点所在客户端的 session id；如果不是临时节点，该值为 0
+- dataLength，该节点存储的数据长度
+- numChildren，该节点子节点的个数
