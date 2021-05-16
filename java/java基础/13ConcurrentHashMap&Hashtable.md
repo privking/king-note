@@ -163,6 +163,8 @@ final V put(K key, int hash, V value, boolean onlyIfAbsent) {
 
 跟HashMap很像，也把之前的HashEntry改成了Node，但是作用不变，把值和next采用了volatile去修饰，保证了可见性，并且也引入了红黑树，在链表大于一定值的时候会转换（默认是8）。
 
+在数组的某一个元素为空的时候，用cas,如果有元素，就用这个元素作为锁，用synchronized
+
 ```java
 final V putVal(K key, V value, boolean onlyIfAbsent) {
     if (key == null || value == null) throw new NullPointerException();
