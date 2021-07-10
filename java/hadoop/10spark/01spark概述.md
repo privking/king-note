@@ -67,3 +67,43 @@ Spark 设计为可以高效地在一个计算节点到数千个计算节点之�
 
 提供常见的机器学习 (ML) 功能的程序库。包括分类、回归、聚类、协同过滤等，还提供了模型评估、数据导入等额外的支持功能。
 
+## 概念
+
+### Master
+
+Spark 特有资源调度系统的 Leader。掌管着整个集群的资源信息，类似于 Yarn 框架中的 ResourceManager
+
+- 监听 Worker，看 Worker 是否正常工作；
+- Master 对 Worker、Application 等的管理(接收 Worker 的注册并管理所有的Worker，接收 Client 提交的 Application，调度等待的 Application 并向Worker 提交)。
+
+### Worker
+
+Spark 特有资源调度系统的 Slave，有多个。每个 Slave 掌管着所在节点的资源信息，类似于 Yarn 框架中的 NodeManager
+
+- 通过 RegisterWorker 注册到 Master；
+- 定时发送心跳给 Master；
+-  根据 Master 发送的 Application 配置进程环境，并启动 ExecutorBackend(执行 Task 所需的临时进程)
+
+### driver program(驱动程序)
+
+每个 Spark 应用程序都包含一个*驱动程序*, 驱动程序负责把并行操作发布到集群上.
+
+驱动程序包含 Spark 应用程序中的*主函数*, 定义了分布式数据集以应用在集群中
+
+### executor(执行器)
+
+SparkContext对象一旦成功连接到集群管理器, 就可以获取到集群中每个节点上的执行器(executor).
+
+执行器是一个进程(进程名: ExecutorBackend, 运行在 Worker 节点上), 用来执行计算和为应用程序存储数据.
+
+然后, Spark 会发送应用程序代码(比如:jar包)到每个执行器. 最后, SparkContext对象发送任务到执行器开始执行程序.
+
+### RDDs(Resilient Distributed Dataset) 弹性分布式数据集
+
+一旦拥有了SparkContext对象, 就可以使用它来创建 RDD 了. 在前面的例子中, 我们调用sc.textFile(...)来创建了一个 RDD, 表示文件中的每一行文本. 我们可以对这些文本行运行各种各样的操作.
+
+### cluster managers(集群管理器)
+
+为了在一个 Spark 集群上运行计算, SparkContext对象可以连接到几种集群管理器(Spark’s own standalone cluster manager, Mesos or YARN).
+
+集群管理器负责跨应用程序分配资源.
