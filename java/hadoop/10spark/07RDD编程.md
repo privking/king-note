@@ -50,7 +50,7 @@ var distFile = sc.textFile("words.txt")
 - 所有基于文件的方法, 都支持目录, 压缩文件, 和通配符(`*`). 例如: textFile("/my/directory"), textFile("/my/directory/*.txt"), and textFile("/my/directory/`*`.gz").
 - textFile还可以有第二个参数, 表示**分区数**. 默认情况下, 每个块对应一个分区.(对 HDFS 来说, 块大小默认是 128M). 可以传递一个**大于块数的分区数, 但是不能传递一个比块数小的分区数**.
 
-## RDD转换
+## RDD转换（单value）
 
 在 RDD 上支持 2 种操作:transformation和action
 
@@ -175,4 +175,284 @@ sortBy(func,[ascending], [numTasks])  ascending是否升序
 ```scala
 rdd1.sortBy(x => x).collect
 ```
+
+### pipe
+
+pipe(command, [envVars])
+
+管道，针对每个分区，把 RDD 中的每个数据通过管道传递给shell命令或脚本，返回输出的RDD。一个分区执行一次这个命令. 如果只有一个分区, 则执行一次命令.
+
+脚本要放在 worker 节点可以访问到的位置
+
+## RDD转换（双value）
+
+### union
+
+求并集. 对源 RDD 和参数 RDD 求并集后返回一个新的 RDD
+
+**不去重**
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5 )
+val list2 =List(3 ,4 ,5 ,6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+val rdd3 = rdd.union(rdd2)
+//rdd3=rdd++rdd2
+```
+
+可以使用`++`实现相同功能
+
+### subtract 
+
+计算差集. 从原 RDD 中减去 原 RDD 和 otherDataset 中的共同的部分，**otherDataset 有原RDD没有的也不计入结果**
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5 )
+val list2 =List(3 ,4 ,5 ,6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+val rdd3 = rdd.subtract(rdd2)
+//结果为1,2
+```
+
+### intersection
+
+计算交集. 对源 RDD 和参数 RDD 求交集后返回一个新的 RDD
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5 )
+val list2 =List(3 ,4 ,5 ,6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+val rdd3 = rdd.intersection(rdd2)
+//3,4,5
+```
+
+### cartesian
+
+计算 2 个 RDD 的笛卡尔积. 尽量避免使用
+
+```scala
+val list1 =List(1 ,2 )
+val list2 =List(6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+val rdd3 = rdd.cartesian(rdd2)
+//(1,6)
+//(1,7)
+//(2,6)
+//(2,7)
+```
+
+### zip
+
+拉链操作. 需要注意的是, 在 Spark 中, 两个 RDD 的**元素的数量**和**分区数**都必须相同, 否则会抛出异常.(在 scala 中, 两个集合的长度可以不同)
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5 )
+val list2 =List(3 ,4 ,5 ,6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+val rdd3 = rdd.zip(rdd2)
+//(1,3)
+//(2,4)
+//(3,5)
+//(4,6)
+//(5,7)
+```
+
+### zipPartitions
+
+分区与分区之间拉，只要求分区数相同即可。
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5 )
+val list2 =List(3 ,4 ,5 ,6,7)
+val rdd= sc.parallelize(list1)
+val rdd2= sc.parallelize(list2)
+
+//分区与分区之间拉
+val rdd3 = rdd.zipPartitions(rdd2)((it1,it2)=>{
+  it1.zip(it2)// 使用scala的zip，按照短的拉，多的丢弃
+  //it1.zipAll(it2,100,200) //按照长的集合拉，不够的使用默认值
+})
+```
+
+### zipWithIndex
+
+与下标zip,返回元组，第二个为下标，第一个为值
+
+```scala
+val rdd3: RDD[(Int, Long)] = rdd.zipWithIndex()
+```
+
+## RDD转换(Key-Value)
+
+大多数的 Spark 操作可以用在任意类型的 RDD 上, 但是有一些比较特殊的操作只能用在key-value类型的 RDD 上.
+
+这些特殊操作大多都涉及到 shuffle 操作, 比如: 按照 key 分组(group), 聚集(aggregate)等.
+
+### partitionBy
+
+对 pairRDD 进行分区操作，如果原有的 partionRDD 的分区器和传入的分区器**相同, 则返回原 pairRDD**，否则会**生成 ShuffleRDD**，即会产生 shuffle 过程
+
+产生shuffle就相当于一个新的阶段（stage）,一个阶段内都是并行执行，互相不影响
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5,5,6 )
+val rdd= sc.parallelize(list1,3)
+val rdd2 = rdd.map((_,1))
+val rdd3 = rdd2.partitionBy(new HashPartitioner(2))
+val ints = rdd3.collect()
+```
+
+### reduceByKey
+
+将相同key的value聚合到一起
+
+在shuffle之前有combine（预聚合）操作（**所有的聚合算子都有预聚合,调用底层函数的时候有默认参数mapSideConbine=true**）
+
+```scala
+val rdd2 = rdd.map((_,1))
+val rdd3 = rdd2.reduceByKey(_+_)
+val ints = rdd3.collect()
+//word count
+```
+
+### groupByKey
+
+按照key进行分组.
+
+只能用于keyValue类型，groupBy可以用于任意类型
+
+```scala
+val rdd2 = rdd.map((_,1))
+val rdd3 = rdd2.groupByKey()
+val ints = rdd3.collect()
+```
+
+### foldByKey
+
+按key进行折叠
+
+```scala
+val list1 =List(1 ,2,3 ,4 ,5,5,6 )
+val rdd= sc.parallelize(list1,3)
+val rdd2 = rdd.map((_,1))
+val rdd3 = rdd2.foldByKey(0)(_+_)
+val ints = rdd3.collect()
+```
+
+### aggregateByKey
+
+相当于foldByKey和groupBy的结合
+
+在shuffle前（分区内）进行foldByKey
+
+在shuffle后（分区间）进行groupBy
+
+能够实现分区内和分区间的执行逻辑不同（foldByKey和groupByKey都是相同的）
+
+```scala
+rdd.aggregateByKey(Int.MinValue)(math.max(_, _), _ +_)
+//取出每个区间相同key的最大值，然后分区间最大值相加
+```
+
+```scala
+//求每个key出现的次数以及key相同的value的和
+val list1 =List(("a",1) ,("b",2),("c",3),("a",1),("b",2),("c",3),("d",4) )
+val rdd= sc.parallelize(list1,3)
+val rdd2 = rdd.aggregateByKey((0,0))(
+  {
+    case ((sum,count),v)=>(sum+v,count+1)
+  },{
+    case ((sum1,count1),(sum2,count2))=>(sum1+sum2,count1+count2)
+  }
+)
+val ints = rdd2.collect()
+
+
+//每个key的平均值
+ val list1 =List(("a",1) ,("b",2),("c",3),("a",1),("b",2),("c",3),("d",4) )
+    val rdd= sc.parallelize(list1,3)
+    val rdd2 = rdd.aggregateByKey((0,0))(
+      {
+        case ((sum,count),v)=>(sum+v,count+1)
+      },{
+        case ((sum1,count1),(sum2,count2))=>(sum1+sum2,count1+count2)
+      }
+    ).map{
+      case (key,(sum,count)) => (key,sum.toDouble/count)
+    }
+```
+
+### combineByKey
+
+在aggregateByKey基础上，初始值根据第一个key的value生成
+
+```scala
+val rdd2 = rdd.combineByKey(
+  v=>v,     //初始值计算            
+  (c:Int,v)=>c+v, //分区前执行的函数，需要类型显式指定
+  (c1:Int,c2:Int)=>c1+c2 //分区间执行的函数
+)
+```
+
+### 4种聚合函数的区别
+
+- reduceByKey
+  - 分区内聚合和分区间聚合逻辑相同
+- foldByKey
+  - 分区内和分区间聚合逻辑相同，但是有初始值
+- aggregateByKey
+  - 有初始值，分区内和分区间逻辑可以不同
+- combineByKey
+  - 可以根据key的第一个value计算初始值，分区内和分区间逻辑可以不同
+
+4个函数底层都调用了combineByKeyWithClassTag
+
+### sortByKey
+
+根据key排序，可以指定升序降序，默认升序
+
+```scala
+val list1 =List(("a",1) ,("b",2),("c",3),("a",1),("b",2),("c",3),("d",4) )
+val rdd= sc.parallelize(list1,3)
+val rdd2 = rdd.sortByKey(true)
+```
+
+### mapValues
+
+.....
+
+### cogroup
+
+```scala
+ val rdd1 = sc.parallelize(Array((1, 10),(2, 20),(1, 100),(3, 30)),1)
+val rdd2 = sc.parallelize(Array((1, "a"),(2, "b"),(1, "aa"),(3, "c")),1)
+rdd1.cogroup(rdd2).collect
+//Array((1,(CompactBuffer(10, 100),CompactBuffer(a, aa))), (3,(CompactBuffer(30),CompactBuffer(c))), (2,(CompactBuffer(20),CompactBuffer(b))))
+```
+
+### join
+
+内连接:
+
+在类型为(K,V)和(K,W)的 RDD 上调用，返回一个相同 key 对应的所有元素对在一起的(K,(V,W))的RDD
+
+```scala
+ var rdd1 = sc.parallelize(Array((1, "a"), (1, "b"), (2, "c")))
+  var rdd2 = sc.parallelize(Array((1, "aa"), (3, "bb"), (2, "cc")))
+   rdd1.join(rdd2).collect
+   // Array((2,(c,cc)), (1,(a,aa)), (1,(b,aa)))
+```
+
+如果某一个 RDD 有重复的 Key, 则会分别与另外一个 RDD 的相同的 Key进行组合
+
+也支持外连接: leftOuterJoin, rightOuterJoin, and fullOuterJoin.
+
+### repartitionAndSortWithinPartitions
+
+分区，并且分区后key有序
 
