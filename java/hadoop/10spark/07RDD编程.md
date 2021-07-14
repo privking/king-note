@@ -456,3 +456,73 @@ rdd1.cogroup(rdd2).collect
 
 分区，并且分区后key有序
 
+
+
+## 行动算子
+
+### collect
+
+以**数组**的形式返回RDD种的所有元素
+
+将分区间的的所有数据拉到driver端
+
+### count
+
+返回RDD中元素的个数
+
+### take(n)
+
+以**数组**形式返回RDD中前n个元素
+
+数据也是拉到driver端
+
+### first
+
+取出第一个元素，取出的结果不是数组的形式。
+
+### takeOrdered
+
+`takeOrdered(num: Int)(implicit ord: Ordering[T]): Array[T]`
+
+返回排序后的前 n 个元素, 默认是升序排列.
+
+### countByKey
+
+`mapValues(_ => 1L).reduceByKey(_ + _).collect()`
+
+针对(K,V)类型的 RDD，返回一个(K,Int)的map，表示每一个key对应的元素个数。
+
+可以用来查看数据是否倾斜
+
+### reduce
+
+数聚集 RDD 中的所有元素，先聚合分区内数据，再聚合分区间数据
+
+```
+rdd.reduce(_+_)
+rdd.sum
+```
+
+### fold
+
+折叠
+
+`fold(zeroValue: T)(op: (T, T) => T): T`
+
+### aggregate
+
+分区内和分区间聚合逻辑可以不同
+
+有初始值
+
+**初始零值在分区内聚合参与一次，在分区间聚合的时候还要参与一次**
+
+`aggregate[U: ClassTag](zeroValue: U)(seqOp: (U, T) => U, combOp: (U, U) => U): U `
+
+### foreach
+
+每个函数是在 **Executor 上执行**的, 不是在 driver 端执行的.
+
+### foreachPartition
+
+每个分区执行一次

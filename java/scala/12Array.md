@@ -35,7 +35,8 @@ object ArrayDemo1 {
 object ArrayDemo2 {
   def main(args: Array[String]): Unit = {
     //创建长度为10的数组，每个元素默认为0
-    val arr = Array[Int](10)
+    // new
+    val arr =new  Array[Int](10)
   }
 }
 ```
@@ -51,7 +52,7 @@ object ArrayDemo3 {
     val buffer3 = buffer :+ 4
     println(buffer3)
 
-    //在原对象上修改，不生成新对象
+    //在原对象上修改，不生成新对象 
     //带 = 的一半用于可变集合
     buffer3 += 10
     100 +=: buffer3
