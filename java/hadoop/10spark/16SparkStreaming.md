@@ -40,6 +40,14 @@ Spark 1.5以前版本，用户如果要限制 Receiver 的数据接收速率，�
 
 使用 netcat 工具向 9999 端口不断的发送数据，通过 Spark Streaming 读取端口数据并统计不同单词出现的次数
 
+```xml
+<dependency>
+    <groupId>org.apache.spark</groupId>
+    <artifactId>spark-streaming_2.11</artifactId>
+    <version>2.1.1</version>
+</dependency>
+```
+
 ```scala
 object StreamingWordCount {
   def main(args: Array[String]): Unit = {
