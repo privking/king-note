@@ -215,3 +215,36 @@ done
 echo "sum=$sum"
 ```
 
+## 定义函数
+
+不限制定义和调用顺序
+
+```sh
+function name() {
+    statements
+    [return value]
+}
+```
+
+```sh
+#!/bin/bash
+function getsum(){
+    local sum=0
+    for n in $@
+    do
+         ((sum+=n))
+    done
+    return $sum
+}
+getsum 10 20 55 15  #调用函数并传递参数
+echo $?   # --->100
+
+
+#调用函数并传递参数，最后将结果赋值给一个变量
+total=$(getsum 10 20 55 15)
+echo $total
+#也可以将变量省略
+echo $(getsum 10 20 55 15)
+```
+
+
