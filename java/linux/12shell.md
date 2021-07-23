@@ -193,7 +193,9 @@ case 变量 in
 值3 )
 执行动作3
 ;;
-....
+* )
+执行动作4
+;;
 esac
 ```
 
@@ -247,4 +249,50 @@ echo $total
 echo $(getsum 10 20 55 15)
 ```
 
+## select...in
 
+适合终端（Terminal）这样的交互场景
+
+select 是无限循环（死循环），输入空值，或者输入的值无效，都不会结束循环，只有遇到 break 语句，或者按下 Ctrl+D 组合键才能结束循环
+
+运行到 select 语句后，取值列表 value_list 中的内容会以菜单的形式显示出来，用户输入菜单编号，就表示选中了某个值，这个值就会赋给变量 variable，然后再执行循环体中的 statements（do 和 done 之间的部分）。
+
+```sh
+select variable in value_list
+do
+  statements
+done
+```
+
+```sh
+#!/bin/bash
+
+echo "What is your favourite OS?"
+select name in "Linux" "Windows" "Mac OS" "UNIX" "Android"
+do
+    case $name in
+        "Linux")
+            echo "Linux是一个类UNIX操作系统，它开源免费，运行在各种服务器设备和嵌入式设备。"
+            break
+            ;;
+        "Windows")
+            echo "Windows是微软开发的个人电脑操作系统，它是闭源收费的。"
+            break
+            ;;
+        "Mac OS")
+            echo "Mac OS是苹果公司基于UNIX开发的一款图形界面操作系统，只能运行与苹果提供的硬件之上。"
+            break
+            ;;
+        "UNIX")
+            echo "UNIX是操作系统的开山鼻祖，现在已经逐渐退出历史舞台，只应用在特殊场合。"
+            break
+            ;;
+        "Android")
+            echo "Android是由Google开发的手机操作系统，目前已经占据了70%的市场份额。"
+            break
+            ;;
+        *)
+            echo "输入错误，请重新输入"
+    esac
+done
+```
