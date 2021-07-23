@@ -1110,3 +1110,50 @@ awk  -F ':'  '{print "filename:" FILENAME ",linenumber:" NR ",columns:" NF ",lin
 #filename:/etc/passwd,linenumber:4,columns:7,linecontent:sys:x:3:3:sys:/dev:/bin/sh
 ```
 
+## read
+
+读取数据并赋值给变量
+
+**常用参数**
+
+- -d :指定读取结束位置，默认换行符
+- -n num :读取num个字符，读取够以后就不用等到结束位置
+- -p prompt:显示提示信息
+- -r:不转义
+- -s:静默模式，不显示输入的字符
+- -t seconds:设置超时时间
+- -u fd :使用文件描述符作为输入
+
+**example**
+
+```sh
+if
+    read -t 20 -sp "Enter password in 20 seconds(once) > " pass1 && printf "\n" &&  #第一次输入密码
+    read -t 20 -sp "Enter password in 20 seconds(again)> " pass2 && printf "\n" &&  #第二次输入密码
+    [ $pass1 == $pass2 ]  #判断两次输入的密码是否相等
+then
+    echo "Valid password"
+else
+    echo "Invalid password"
+fi
+```
+
+```
+如果两次输入密码相同，运行结果为：
+Enter password in 20 seconds(once) >
+Enter password in 20 seconds(again)>
+Valid password
+
+如果两次输入密码不同，运行结果为：
+Enter password in 20 seconds(once) >
+Enter password in 20 seconds(again)>
+Invalid password
+
+如果第一次输入超时，运行结果为：
+Enter password in 20 seconds(once) > Invalid password
+
+如果第二次输入超时，运行结果为：
+Enter password in 20 seconds(once) >
+Enter password in 20 seconds(again)> Invalid password
+```
+
