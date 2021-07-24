@@ -1,6 +1,6 @@
 # java api
 ## maven
-```
+```xml
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
@@ -15,7 +15,7 @@
 ```
 ## 配置
 
-```
+```java
 @Configuration
 public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
     @Override
@@ -30,7 +30,7 @@ public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
 
 ## 实体类
 
-```
+```java
 @Document(indexName = "es_rest_goods_test", type = "_doc", shards = 1, replicas = 3, createIndex = true,
         useServerConfiguration = false, versionType = VersionType.EXTERNAL)
 @Data

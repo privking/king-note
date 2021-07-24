@@ -1,6 +1,6 @@
 # RestApi
 
-```
+```java
 @SpringBootTest
 public class TestRest {
 
