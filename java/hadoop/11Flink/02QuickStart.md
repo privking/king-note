@@ -104,3 +104,89 @@ object StreamWordCount {
 }
 ```
 
+## 集群简单配置
+
+### slaves
+
+```
+node1
+node2
+node3
+```
+
+### flink-conf.yaml
+
+```yaml
+#jobmanager地址
+jobmanager.rpc.address: node1
+
+# The RPC port where the JobManager is reachable.
+#JobManager通信端口
+jobmanager.rpc.port: 6123
+
+
+# The heap size for the JobManager JVM
+#jobManager堆大小
+jobmanager.heap.size: 1024m
+
+
+# The total process memory size for the TaskManager.
+#
+# Note this accounts for all memory usage within the TaskManager process, including JVM metaspace and other overhead.
+#taskmanager堆大小
+taskmanager.memory.process.size: 1568m
+
+# To exclude JVM metaspace and overhead, please, use total Flink memory size instead of 'taskmanager.memory.process.size'.
+# It is not recommended to set both 'taskmanager.memory.process.size' and Flink memory.
+#
+# taskmanager.memory.flink.size: 1280m
+
+# The number of task slots that each TaskManager offers. Each slot runs one parallel pipeline.
+# 任务槽大小，同一个操作(比如map等)的并行度为n，那么需要占用的任务槽就是n，不同的操作不影响
+taskmanager.numberOfTaskSlots: 4
+#默认并行度
+parallelism.default: 1
+
+jobmanager.execution.failover-strategy: region
+
+
+```
+
+### 启动集群
+
+```sh
+bin/start-cluster.sh
+```
+
+### 停止集群
+
+```sh
+bin/stop-cluster.sh
+```
+
+### 命令行提交任务
+
+`--host node1 --port 9999`为程序中传入参数
+
+```sh
+bin/flink run -c priv.king.WordCount -p xxxx.jar --host node1 --port 9999
+```
+
+### 命令行任务列表
+
+```sh
+bin/flink list
+```
+
+### 命令行取消任务
+
+```sh
+bin/flink cancel jobId
+```
+
+
+
+
+
+
+
