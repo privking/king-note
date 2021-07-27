@@ -186,7 +186,44 @@ bin/flink cancel jobId
 
 
 
+## Flink on Yarn
+
+### Session-cluster 模式
+
+![tt.jpg](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clip_image002-1627390761-9709c3.jpg)
+
+![image-20210727211217462](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210727211217462-1627391537-818a71.png)
+
+Session-Cluster模式需要先启动集群，然后再提交作业，接着会向yarn申请一块空间后，资源永远保持不变。如果资源满了，下一个作业就无法提交，只能等到yarn中的其中一个作业执行完成后，释放了资源，下个作业才会正常提交。所有作业共享Dispatcher和ResourceManager；共享资源；适合规模小执行时间短的作业。
+
+- 启动yarn集群
+- 启动yarn-session
+  - `./yarn-session.sh -n 2 -s 2 -jm 1024 -tm 1024 -nm test -d`
+  - -n(--container)：TaskManager的数量。
+  - -s(--slots)： 每个TaskManager的slot数量，默认一个slot一个core，默认每个taskmanager的slot的个数为1，有时可以多一些taskmanager，做冗余。
+  - -jm：JobManager的内存（单位MB)。
+  - -tm：每个taskmanager的内存（单位MB)。
+  - -nm：yarn 的appName(现在yarn的ui上的名字)。 
+  - -d：后台执行。
+- 执行任务 
+  -   `./flink run -c priv.king.WordCount -p xxxx.jar --host node1 --port 9999`  
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clip_image002-1627391063-373abb.jpg)
+
+- 取消yarn-session
+  - `yarn application --kill application_xxxxxx`
+
+### Per-Job-Cluster
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clip_image002-1627390806-5ec73a.jpg)
+
+![](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210727211217462-1627391537-818a71-1627391563-28222e.png)
 
 
 
+一个Job会对应一个集群，每提交一个作业会根据自身的情况，都会单独向yarn申请资源，直到作业执行完成，一个作业的失败与否并不会影响下一个作业的正常提交和运行。独享Dispatcher和ResourceManager，按需接受资源申请；适合规模大长时间运行的作业。
+
+- 启动hadoop集群
+- 直接执行job
+  - `./flink run –m yarn-cluster-c priv.king.WordCount -p xxxx.jar --host node1 --port 9999`
 
