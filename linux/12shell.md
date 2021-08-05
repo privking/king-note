@@ -59,6 +59,12 @@ echo 'hello world'
 - -e 目标是否存在（exist）
 - -d 是否为路径（directory）
 - -f 是否为文件（file）
+- -L 判断对象是否存在，并且为符号链接
+- -h 判断对象是否存在，并且为软链接
+- -O 判断对象是否存在，并且属于当前用户
+- -G 判断对象是否存在，并且属于当前用户组
+- -nt 判断file1是否比file2新  [ "/data/file1" -nt "/data/file2" ]
+- -ot 判断file1是否比file2旧  [ "/data/file1" -ot "/data/file2" ]
 - [ -e foer.sh ] || touch foer.sh #判断当前目录下是否有foer.sh这个文件，假如没有就创建出foer.sh文件
 - **中括号两边都要空格**
 
@@ -84,6 +90,12 @@ echo 'hello world'
 - = 相等
 - != 不相等
 - [ 'kkkkk' != 'kkkk' ] && echo '不等于'
+
+## 逻辑
+
+- 且 `-a   &&` 
+- 或 `-o   ||`
+- 非 `!`
 
 ## example
 
@@ -296,3 +308,4 @@ do
     esac
 done
 ```
+
