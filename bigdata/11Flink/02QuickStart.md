@@ -15,6 +15,12 @@
         <artifactId>flink-streaming-scala_2.11</artifactId>
         <version>1.10.0</version>
     </dependency>
+    <!--flink 1.13h-->
+    <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_2.11</artifactId>
+            <version>1.13.0</version>
+        </dependency>
 </dependencies>
 
 

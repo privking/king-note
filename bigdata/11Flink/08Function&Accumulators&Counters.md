@@ -38,6 +38,10 @@ class MyRichMapFunction extends RichMapFunction[String, Int] {
 
 ## Accumulator&Counter
 
+**总结：只需要RichFunction即可，不需要keyBy也可以。在运行时每个算子都会有一个副本，在自己算子上累加，并行度增加，算子增加，副本也就增加（和一个function里面的成员变量一样），结束后可以getAccumulatorResult获取最终累加结果**
+
+
+
 累加器是具有**加法运算**和**最终累加结果**的一种简单结构，可在作业结束后使用。
 
 最简单的累加器就是**计数器**: 你可以使用 `Accumulator.add(V value)` 方法将其递增。在作业结束时，Flink 会汇总（合并）所有部分的结果并将其发送给客户端。 在调试过程中或在你想快速了解有关数据更多信息时,累加器作用很大。
@@ -50,13 +54,13 @@ IntCounter,LongCounter,DoubleCounter
 private IntCounter numLines = new IntCounter();
 ```
 
-其次，你必须在 *rich* function 的 `open()` 方法中注册累加器对象。也可以在此处定义名称。
+其次，你**必须在 rich function 的 `open()` 方法中注册累加器对象。也可以在此处定义名称**。
 
 ```java
 getRuntimeContext().addAccumulator("num-lines", this.numLines);
 ```
 
-现在你可以在操作 function 中的任何位置（包括 `open()` 和 `close()` 方法中）使用累加器。
+现在你可以在操作 function 中的任何位置（**包括 `open()` 和 `close()` 方法中**）使用累加器。
 
 ```java
 this.numLines.add(1);
