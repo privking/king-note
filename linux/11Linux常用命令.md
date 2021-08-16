@@ -1016,7 +1016,9 @@ nc -lk 9999
 - -n 不要在最后自动换行
 - -e 若字符串中出现以下字符，则特别加以处理，而不会将它当成一般
 
-**-e解析**
+
+
+-e解析
 
 -  \a 发出警告声；
 -   \b 删除前一个字符；
@@ -1222,4 +1224,24 @@ date -d "-1 year" +"%Y%m%d"  #显示前一年的日期
 date -d "+1 year" +"%Y%m%d"  #显示下一年的日期
 date -s "2012-05-23 01:01:01" # s
 ```
+
+## eval
+
+eval会对后面的cmdLine进行两遍扫描，如果第一遍扫描后，cmdLine是个普通命令，则执行此命令；
+
+如果cmdLine中含有变量的间接引用，则保证间接引用的语义
+
+```sh
+eval [参数]
+#参数说明：参数不限数目，彼此之间用分号分开。
+eval ls /;ls / #连接多个命令
+```
+
+![image-20210816235409653](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210816235409653-1629129256-eff1b0.png)
+
+扫描2次
+
+![image-20210816235802041](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210816235802041-1629129482-ca2eed.png)
+
+![image-20210817000026256](C:\Users\58443\AppData\Roaming\Typora\typora-user-images\image-20210817000026494.png)
 
