@@ -1243,5 +1243,5 @@ eval ls /;ls / #连接多个命令
 
 ![image-20210816235802041](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210816235802041-1629129482-ca2eed.png)
 
-![image-20210817000026256](C:\Users\58443\AppData\Roaming\Typora\typora-user-images\image-20210817000026494.png)
+![image-20210817000026256](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/image-20210817000026494-1629129830-848ab3.png)
 
