@@ -4,5 +4,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: ssh-hexo
+      - name: kill-old-hexo
+        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "ps -ef|grep hexo|awk -F' ' '{print "kill -9 "$2}'|awk 'NR>1{print line}{line=$0}'|bash"
+      - name: rebuild-hexo
         run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
