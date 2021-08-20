@@ -1,0 +1,22 @@
+name: Rebuild Hexo
+on: push
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+      # You may pin to the exact commit or the version.
+      # uses: kielabokkie/ssh-key-and-known-hosts-action@e5c88dc608851beb90a7a78c7d5d2ef6f62f9860
+      uses: kielabokkie/ssh-key-and-known-hosts-action@v1.2.0
+      with:
+        # Private key required to access the host
+        ssh-private-key: ${{ secrets.HEXO_SERVER_PRIVATE_KEY }}
+        # Hostname or IP to add to the known hosts file
+        ssh-host: ${{ secrets.HEXO_HOST }}
+        # Port for key-scanning the server
+        ssh-port: 22 # optional
+     - name: Rebuild Hexo
+      # You may pin to the exact commit or the version.
+      # uses: kielabokkie/ssh-key-and-known-hosts-action@e5c88dc608851beb90a7a78c7d5d2ef6f62f9860
+        run: ssh root@${{ secrets.HEXO_HOST }} "sh /usr/local/soft/hexo/king-note-web-starter.sh"
+       
