@@ -16,9 +16,9 @@ jobs:
           # ssh remote user
           user: root
           # content of ssh private key. ex raw content of ~/.ssh/id_rsa
-          key: ${{ secrets.HEXO_SERVER_PRIVATE_KEY }} # optional
+          key:  # optional
           # ssh remote password
-          pass: # optional
+          pass: 4109wangjiajun # optional
           # connection timeout to remote host
           connect_timeout: # optional, default is 30s
           # execute commands on ssh
