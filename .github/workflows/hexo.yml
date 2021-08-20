@@ -11,5 +11,7 @@ jobs:
           ssh-host: ${{ secrets.HEXO_HOST }}
           ssh-port: 22 # optional
       - name: Rebuild Hexo
-        run: ssh root@${{ secrets.HEXO_HOST }} "sh /usr/local/soft/hexo/king-note-web-starter.sh"
+        env:
+          HEXO_HOST: ${{ secrets.HEXO_HOST }}
+        run: ssh root@$HEXO_HOST "sh /usr/local/soft/hexo/king-note-web-starter.sh"
        
