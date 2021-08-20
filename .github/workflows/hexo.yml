@@ -13,5 +13,5 @@ jobs:
       - name: Rebuild Hexo
         env:
           HEXO_HOST: ${{ secrets.HEXO_HOST }}
-        run: echo $(ssh root@$HEXO_HOST "sh /usr/local/soft/hexo/king-note-web-starter.sh") | xargs sh
+        run: echo $(ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@$HEXO_HOST "sh /usr/local/soft/hexo/king-note-web-starter.sh") | xargs sh
        
