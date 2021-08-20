@@ -5,11 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
-      uses: kielabokkie/ssh-key-and-known-hosts-action@v1.2.0
-      with:
-        ssh-private-key: ${{ secrets.HEXO_SERVER_PRIVATE_KEY }}
-        ssh-host: ${{ secrets.HEXO_HOST }}
-        ssh-port: 22 # optional
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1.2.0
+        with:
+          ssh-private-key: ${{ secrets.HEXO_SERVER_PRIVATE_KEY }}
+          ssh-host: ${{ secrets.HEXO_HOST }}
+          ssh-port: 22 # optional
       - name: Rebuild Hexo
         run: ssh root@${{ secrets.HEXO_HOST }} "sh /usr/local/soft/hexo/king-note-web-starter.sh"
        
