@@ -5,4 +5,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ssh-hexo
-        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "pwd"
+        run: sshpass -p "4109wangjiajun.." ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "pwd"
