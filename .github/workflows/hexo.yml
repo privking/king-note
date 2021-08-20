@@ -4,22 +4,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: sshpass-install
+        run: sudo apt-get install sshpass
       - name: ssh-hexo
-        # You may pin to the exact commit or the version.
-        # uses: cross-the-world/ssh-pipeline@7f022867934a210af826af99ef80d96f03a094d5
-        uses: cross-the-world/ssh-pipeline@v1.2.0
-        with:
-          # ssh remote host
-          host: 121.41.104.162
-          # ssh remote port
-          port: 22 # optional, default is 22
-          # ssh remote user
-          user: root
-          # content of ssh private key. ex raw content of ~/.ssh/id_rsa
-          key: # ${{ secrets.HEXO_SERVER_PRIVATE_KEY }} # optional
-          # ssh remote password
-          pass: ${{ secrets.HEXO_SERVER_PASSWORD }} # optional
-          # connection timeout to remote host
-          connect_timeout: # optional, default is 30s
-          # execute commands on ssh
-          script: kill -9 $(ps -ef|grep hexo|awk '{print $2}') ; sh /usr/local/soft/hexo/king-note-web-starter.sh
+        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "kill -9 $(ps -ef|grep hexo|awk '{print $2}') ; sh /usr/local/soft/hexo/king-note-web-starter.sh"
