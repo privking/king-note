@@ -15,7 +15,7 @@
         <artifactId>flink-streaming-scala_2.11</artifactId>
         <version>1.10.0</version>
     </dependency>
-    <!--flink 1.13h-->
+    <!--flink 1.13需要该依赖-->
     <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-clients_2.11</artifactId>
