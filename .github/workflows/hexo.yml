@@ -11,5 +11,5 @@ jobs:
           ssh-host: 121.41.104.162
           ssh-port: 22 # optional
       - name: Rebuild Hexo
-        run: echo $(ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null'  root@121.41.104.162 "kill -9 $(ps -ef|grep hexo|awk '{print $2}') & sh /usr/local/soft/hexo/king-note-web-starter.sh") | xargs sh
+        run: echo $(ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null'  root@121.41.104.162 "kill -9 $(ps -ef|grep hexo|awk '{print $2}') ; sh /usr/local/soft/hexo/king-note-web-starter.sh") | xargs sh
        
