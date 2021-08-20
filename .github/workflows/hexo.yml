@@ -7,4 +7,4 @@ jobs:
       - name: sshpass-install
         run: sudo apt-get install sshpass
       - name: ssh-hexo
-        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "kill -9 $(ps -ef|grep hexo|awk '{print $2}') ; sh /usr/local/soft/hexo/king-note-web-starter.sh"
+        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
