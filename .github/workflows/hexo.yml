@@ -4,7 +4,5 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: sshpass-install
-        run: sudo apt-get install sshpass
       - name: ssh-hexo
-        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
+        run: sshpass -p "4109wangjiajun.." ssh root@121.41.104.162 "pwd"
