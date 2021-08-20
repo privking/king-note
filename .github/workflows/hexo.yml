@@ -5,4 +5,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ssh-hexo
-        run: sshpass -p "4109wangjiajun.." ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "pwd"
+        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
