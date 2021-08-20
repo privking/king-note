@@ -1,3 +1,3 @@
 # king-note
 
-笔记 
+笔记 king-note
