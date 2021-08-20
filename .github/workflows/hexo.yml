@@ -6,9 +6,8 @@ jobs:
     steps:
       - name: fir
         run: eval "$(ssh-agent -s)"; echo ${{secrets.HEXO_SERVER_PRIVATE_KEY}} > ~/.ssh/id_rsa ; ssh-add ~/.ssh/id_rsa;
-
-       - name: rebuild-hexo
-         run: ssh  root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
+      - name: rebuild-hexo
+        run: ssh  root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
 
 
       # - name: SSHPASS Github Action
