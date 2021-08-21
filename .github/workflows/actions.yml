@@ -1,7 +1,18 @@
-name: Rebuild Hexo
+name: King Note Actions
 on: push
 jobs:
   sync:
+    name: sync_to_gitee
+    runs-on: ubuntu-latest
+    steps:
+      - uses: wearerequired/git-mirror-action@master
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+        with:
+          source-repo: "https://github.com/privking/king-note.git"
+          destination-repo: "git@gitee.com:privking/king-note.git"
+  hexo:
+    name: rebuild_hexo
     runs-on: ubuntu-latest
     steps:
       # - name: SSHPASS_HEXO
