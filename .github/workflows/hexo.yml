@@ -18,4 +18,4 @@ jobs:
       #     # SSHPASS commands to run
       #     run: cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh
       - name: sshpass-hexo
-        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh"
+        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh;exit 0"
