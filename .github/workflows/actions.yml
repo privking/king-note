@@ -1,20 +1,17 @@
 name: King Note Actions
 on: push
 jobs:
-  sync:
-    name: sync_to_gitee
-    runs-on: ubuntu-latest
-    steps:
-      - uses: wearerequired/git-mirror-action@master
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
-        with:
-          source-repo: "https://github.com/privking/king-note.git"
-          destination-repo: "git@gitee.com:privking/king-note.git"
-  hexo:
-    name: rebuild_hexo
-    runs-on: ubuntu-latest
-    steps:
+  actions:
+    - name: sync_to_gitee
+      runs-on: ubuntu-latest
+      steps:
+        - uses: wearerequired/git-mirror-action@master
+          env:
+            SSH_PRIVATE_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+          with:
+            source-repo: "https://github.com/privking/king-note.git"
+            destination-repo: "git@gitee.com:privking/king-note.git"
+
       # - name: SSHPASS_HEXO
       #   # You may pin to the exact commit or the version.
       #   # uses: matheusvanzan/sshpass-action@1e96f05518c2e99d17587ee85fa4d64c1612d0f1
@@ -28,5 +25,5 @@ jobs:
       #     password:  ${{secrets.HEXO_SERVER_PASSWORD}} 
       #     # SSHPASS commands to run
       #     run: sh king-note-web-starter-nolog.sh #就放在根目录，不要cd再操作  绝对路径包含hexo 会被kill
-      - name: sshpass-hexo
-        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  root@121.41.104.162 "sh king-note-web-starter-nolog.sh"
+    - name: sshpass-hexo
+      run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  root@121.41.104.162 "sh king-note-web-starter-nolog.sh"
