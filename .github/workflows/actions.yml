@@ -13,7 +13,7 @@ jobs:
           destination-repo: "git@gitee.com:privking/king-note.git"
   hexo:
     name: rebuild_hexo
-    needs: sync_to_gitee
+    needs: sync
     runs-on: ubuntu-latest
     steps:
       # - name: SSHPASS_HEXO
