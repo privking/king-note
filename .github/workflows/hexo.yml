@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: fir
-        run: sudo apt-get install ssh ;eval "$(ssh-agent -s)"; echo "${{secrets.HEXO_SERVER_PRIVATE_KEY}}" > ./id_rsa ;chmod 400 ./id_rsa; ssh-add ./id_rsa;ssh-keygen -R 121.41.104.162;
+        run: sudo apt-get install ssh ;eval "$(ssh-agent -s)"; echo "${{secrets.HEXO_SERVER_PRIVATE_KEY}}" > ./id_rsa ;chmod 400 ./id_rsa; ssh-add ./id_rsa;
       - name: rebuild-hexo
         run: ssh  root@121.41.104.162 "sh /usr/local/soft/hexo/king-note-web-starter.sh"
 
