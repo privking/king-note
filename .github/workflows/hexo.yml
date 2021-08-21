@@ -21,4 +21,4 @@ jobs:
         run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@121.41.104.162 "echo hello"
 
       - name: sshpass-hexo
-        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q  root@121.41.104.162 "cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh"
+        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@121.41.104.162 "cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh"
