@@ -4,16 +4,18 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: SSHPASS_HEXO
-        # You may pin to the exact commit or the version.
-        # uses: matheusvanzan/sshpass-action@1e96f05518c2e99d17587ee85fa4d64c1612d0f1
-        uses: matheusvanzan/sshpass-action@v1
-        with:
-          # SSHPASS host
-          host: 121.41.104.162
-          # SSHPASS username
-          username: root
-          # SSHPASS password
-          password:  ${{secrets.HEXO_SERVER_PASSWORD}} 
-          # SSHPASS commands to run
-          run: cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh
+      # - name: SSHPASS_HEXO
+      #   # You may pin to the exact commit or the version.
+      #   # uses: matheusvanzan/sshpass-action@1e96f05518c2e99d17587ee85fa4d64c1612d0f1
+      #   uses: matheusvanzan/sshpass-action@v1
+      #   with:
+      #     # SSHPASS host
+      #     host: 121.41.104.162
+      #     # SSHPASS username
+      #     username: root
+      #     # SSHPASS password
+      #     password:  ${{secrets.HEXO_SERVER_PASSWORD}} 
+      #     # SSHPASS commands to run
+      #     run: cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh
+      - name: sshpass-hexo
+        run: sshpass -p ${{secrets.HEXO_SERVER_PASSWORD}} ssh -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' root@121.41.104.162 "cd /usr/local/soft/hexo ; sh king-note-web-starter-nolog.sh"
