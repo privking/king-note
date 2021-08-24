@@ -1061,6 +1061,58 @@ cut -d ':' -f 2- /etc/passwd
 cut -c 2-9 /etc/passwd
 ```
 
+## sed
+
+对来自文件、以及标准输入的文本进行编辑
+
+**常用参数**
+
+- -n 取消默认输出 或`--quiet`或`--silent` 仅显示script处理后的结果
+- -e `-e<script>`或`--expression=<script>` 以选项中指定的script来处理输入
+- -f `-f<script文件>`或`--file=<script文件>` 以选项中指定的script文件来处理输入
+- a ：新增， a 的后面可以接字串，而这些字串会在新的一行出现(目前的下一行)
+- c ：取代， c 的后面可以接字串，这些字串可以取代 n1,n2 之间的行！
+- d ：删除
+- i ：插入， i 的后面可以接字串，而这些字串会在新的一行出现(目前的上一行)；
+- s ：取代，通常这个 s 的动作可以搭配正规表示法
+
+```shell
+# 在testfile文件的第四行后添加一行，并将结果输出到标准输出
+sed -e 4a\newLine testfile 
+#将 /etc/passwd 的内容列出并且列印行号，同时，请将第 2~5 行删除！
+# nl浏览文件并且显示行号
+nl /etc/passwd | sed '2,5d'
+# 只要删除第 2 行
+nl /etc/passwd | sed '2d' 
+#要删除第 3 到最后一行
+nl /etc/passwd | sed '3,$d'   
+#第二行后(亦即是加在第三行)加上『drink tea?』字样 反斜杠可以添加多行
+nl /etc/passwd | sed '2a drink tea'
+#在第二行前
+nl /etc/passwd | sed '2i drink tea' 
+# 将第2-5行的内容取代成为『No 2-5 number』
+nl /etc/passwd | sed '2,5c No 2-5 number'
+#列出 /etc/passwd 文件内的第 5-7 行
+# p代表print
+nl /etc/passwd | sed -n '5,7p'
+#搜索 /etc/passwd有root关键字的行
+nl /etc/passwd | sed '/root/p'
+# 仅列出匹配行
+nl /etc/passwd | sed -n '/root/p'
+# 删除/etc/passwd所有包含root的行，其他行输出
+nl /etc/passwd | sed  '/root/d'
+# 替换
+sed 's/要被取代的字串/新的字串/g'
+/sbin/ifconfig eth0 | grep 'inet addr' | sed 's/^.*addr://g' | sed 's/Bcast.*$//g'
+# 操作源文件
+sed -i 's/\.$/\!/g' regular_express.txt
+#直接在 regular_express.txt 最后一行加入 # This is a test:
+#  $ 代表的是最后一行，而 a 的动作是新增
+sed -i '$a # This is a test' regular_express.txt
+```
+
+
+
 ## awk
 
 对数据列进行提取
@@ -1110,6 +1162,12 @@ awk  -F ':'  '{print "filename:" FILENAME ",linenumber:" NR ",columns:" NF ",lin
 #filename:/etc/passwd,linenumber:2,columns:7,linecontent:daemon:x:1:1:daemon:/usr/sbin:/bin/sh
 #filename:/etc/passwd,linenumber:3,columns:7,linecontent:bin:x:2:2:bin:/bin:/bin/sh
 #filename:/etc/passwd,linenumber:4,columns:7,linecontent:sys:x:3:3:sys:/dev:/bin/sh
+
+#截取文件的名称，去掉路径 ji
+echo "usr/local/soft/aa.jpg" | awk -F"/" '{print $NF}'
+
+#使用循环
+echo "/usr/local/soft/aa.md" |awk -F"/" '{for(i=2;i<NF;i++){print "- "$i;}}'
 ```
 
 ## read

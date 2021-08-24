@@ -281,3 +281,96 @@
 
 <pre>
 "/(.*?at)/" => <a href="#learn-regex"><strong>The fat</strong></a> cat sat on the mat. </pre>
+
+## 正则替换字串
+
+```
+abcde_123
+
+匹配:
+(\S+)_(\d+)
+
+替换：保留abcde_ ，数字替换为aa
+$1_aa  或者是 \1_aa
+$1或\1表示第一个括号匹配到的内容
+$0表示匹配到的一整行
+```
+
+## 正则替换大小写
+
+```
+\U 将匹配项转为大写(Upper)
+\L 将匹配项转为小写(Lower)
+\E 终止转换,转换从\U或\L开始到\E结束之间的字母大小写类型.(End)
+
+abcde_123
+匹配：
+(\S+)_(\d+)
+替换：将abcde替换为大写,将123替换为小写的ff
+\U\1\E_ff
+
+注意：如果没有\E,后面的ff也会被替换为大写
+```
+
+
+
+## java中正则Demo
+
+```java
+public static void main(String[] args) {
+        // 去除单词与 , 和 . 之间的空格
+        String str = "Hello , World .";
+        String pattern = "(\\w)(\\s+)([.,])";
+        // $0 匹配 `(\w)(\s+)([.,])` 结果为 `o空格,` 和 `d空格.`
+        // $1 匹配 `(\w)` 结果为 `o` 和 `d`
+        // $2 匹配 `(\s+)` 结果为 `空格` 和 `空格`
+        // $3 匹配 `([.,])` 结果为 `,` 和 `.`
+        System.out.println(str.replaceAll(pattern, "$1$3")); // Hello, World.
+    }
+```
+
+```java
+  //Java 中可以在小括号中使用 ?<name> 将小括号中匹配的内容保存为一个名字为 name 的副本。
+  //notepad++不行
+  public static void main(String[] args) {
+        String str = "@wjj 你好啊";
+        Pattern pattern = Pattern.compile("@(?<first>\\w+\\s)"); // 保存一个副本
+        Matcher matcher = pattern.matcher(str);
+        while (matcher.find()) {
+            System.out.println(matcher.group());
+            System.out.println(matcher.group(1));
+            System.out.println(matcher.group("first"));
+        }
+    }
+
+/**
+@wjj 
+wjj 
+wjj 
+**/
+```
+
+```java
+//java中的标志
+// i , g , m
+public static void main(String[] args) {
+        String str = "1990\n2010\n2017";
+        // 这里应用了 (?m) 的多行匹配模式，只为方便我们测试输出
+        // "^1990$|^199[1-9]$|^20[0-1][0-6]$|^2017$" 为判断 1990-2017 正确的正则表达式
+        Pattern pattern = Pattern.compile("(?m)^1990$|^199[1-9]$|^20[0-1][0-6]$|^2017$");
+        Matcher matcher = pattern.matcher(str);
+        while (matcher.find()) {
+            System.out.println(matcher.group());
+        }
+    }
+    
+    // Pattern pattern = Pattern.compile("(?i)\\w+"); // 推荐写法
+```
+
+## 常用正则表达式
+
+汉字：`^[\u4e00-\u9fa5]{0,}$`
+Email地址：`^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$`
+域名：`^((http:\/\/)|(https:\/\/))?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}(\/)`
+手机号: `^([1][3,4,5,6,7,8,9])\d{9}$`
+IP地址：`\d+\.\d+\.\d+\.\d+` 

@@ -50,6 +50,9 @@ echo 'hello world'
   
   echo $((12 % 6))
   echo $[12 % 6]
+  
+  val=`expr $a + $b`
+  echo "a + b : $val"
 ```
 
 ## 条件判断
@@ -130,13 +133,13 @@ fi
 ## 多分支判断
 
 ```sh
-if [条件判断];
+if [ 条件判断 ];
     then
     执行动作
-elif [条件判断];
+elif [ 条件判断 ];
     then
     执行动作
-elif [条件判断];
+elif [ 条件判断 ];
     then
     执行动作
 fi
@@ -307,5 +310,51 @@ do
             echo "输入错误，请重新输入"
     esac
 done
+```
+
+## 管道
+
+```sh
+echo "ls head | awk -F\" \" 'NR==$random_head{print \$0}'"|bash
+```
+
+## 随机
+
+$RANDOM
+
+```sh
+random_head=`expr $RANDOM % $headimgs_count + 1`
+```
+
+## 变量
+
+```shell
+#定义变量
+pi=3.14
+#获取到值
+echo $pi
+#导出变量
+#导出的变量会共享给调用的脚本
+#共享模式为拷贝副本，在后面的子脚本中，修改的只是副本的值
+export age=10
+
+```
+
+## 数组
+
+```shell
+my_array=(A B "C" D)
+echo "数组的元素为: ${my_array[*]}"
+echo "数组的元素为: ${my_array[@]}"
+echo "数组元素个数为: ${#my_array[*]}"
+echo "数组元素个数为: ${#my_array[@]}"
+
+array_name[0]=value0
+array_name[1]=value1
+array_name[2]=value2
+echo "第一个元素为: ${my_array[0]}"
+echo "第二个元素为: ${my_array[1]}"
+echo "第三个元素为: ${my_array[2]}"
+echo "第四个元素为: ${my_array[3]}"
 ```
 
