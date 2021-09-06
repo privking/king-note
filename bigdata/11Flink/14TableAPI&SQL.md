@@ -214,6 +214,8 @@ tableEnv.createTemporaryView("other_catalog.other_database.exampleView", table)
 
 从传统数据库系统的角度来看，`Table` 对象与 `VIEW` 视图非常像。也就是，定义了 `Table` 的查询是没有被优化的， 而且会被内嵌到另一个引用了这个注册了的 `Table`的查询中。如果多个查询都引用了同一个注册了的`Table`，那么它会被内嵌每个查询中并被执行多次， 也就是说注册了的`Table`的结果**不会**被共享（注：**Blink 计划器的`TableEnvironment`会优化成只执行一次**）。
 
+
+
 ## 查询表
 
 Table API 是关于 Scala 和 Java 的集成语言式查询 API。与 SQL 相反，Table API 的查询不是由字符串指定，而是在宿主语言中逐步构建。
@@ -287,11 +289,7 @@ val table = table1
 println(table.explain())
 ```
 
-
-
-## Demo
-
-### DataStream与Table互转
+## DataStream与Table互转
 
 ```scala
 import org.apache.flink.api.scala._
@@ -320,4 +318,675 @@ resultStream.print()
 env.execute()
 ```
 
-### 
+### 数据类型到 Table Schema 的映射
+
+**基于位置映射**
+
+```scala
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+val stream: DataStream[(Long, Int)] = ...
+
+// convert DataStream into Table with field "myLong" only
+val table: Table = tableEnv.fromDataStream(stream, $"myLong")
+
+// convert DataStream into Table with field names "myLong" and "myInt"
+val table: Table = tableEnv.fromDataStream(stream, $"myLong", $"myInt")
+```
+
+**基于名称映射**
+
+```scala
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+val stream: DataStream[(Long, Int)] = ...
+
+// convert DataStream into Table with field "_2" only
+val table: Table = tableEnv.fromDataStream(stream, $"_2")
+
+// convert DataStream into Table with swapped fields
+val table: Table = tableEnv.fromDataStream(stream, $"_2", $"_1")
+
+// convert DataStream into Table with swapped fields and field names "myInt" and "myLong"
+val table: Table = tableEnv.fromDataStream(stream, $"_2" as "myInt", $"_1" as "myLong")
+```
+
+```scala
+//=========================================
+//ROW类型
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+// DataStream of Row with two fields "name" and "age" specified in `RowTypeInfo`
+val stream: DataStream[Row] = ...
+
+// convert DataStream into Table with renamed field names "myName", "myAge" (position-based)
+val table: Table = tableEnv.fromDataStream(stream, $"myName", $"myAge")
+
+// convert DataStream into Table with renamed fields "myName", "myAge" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"name" as "myName", $"age" as "myAge")
+
+// convert DataStream into Table with projected field "name" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"name")
+
+// convert DataStream into Table with projected and renamed field "myName" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"name" as "myName")
+
+//===========================================
+//POJO类型
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+// Person is a POJO with field names "name" and "age"
+val stream: DataStream[Person] = ...
+
+// convert DataStream into Table with renamed fields "myAge", "myName" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"age" as "myAge", $"name" as "myName")
+
+// convert DataStream into Table with projected field "name" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"name")
+
+// convert DataStream into Table with projected and renamed field "myName" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"name" as "myName")
+
+//=============================================
+//Tuple
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+val stream: DataStream[(Long, String)] = ...
+
+// convert DataStream into Table with field names "myLong", "myString" (position-based)
+val table: Table = tableEnv.fromDataStream(stream, $"myLong", $"myString")
+
+// convert DataStream into Table with reordered fields "_2", "_1" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"_2", $"_1")
+
+// convert DataStream into Table with projected field "_2" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"_2")
+
+// convert DataStream into Table with reordered and aliased fields "myString", "myLong" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"_2" as "myString", $"_1" as "myLong")
+
+// define case class
+case class Person(name: String, age: Int)
+val streamCC: DataStream[Person] = ...
+
+// convert DataStream into Table with field names 'myName, 'myAge (position-based)
+val table = tableEnv.fromDataStream(streamCC, $"myName", $"myAge")
+
+// convert DataStream into Table with reordered and aliased fields "myAge", "myName" (name-based)
+val table: Table = tableEnv.fromDataStream(stream, $"age" as "myAge", $"name" as "myName")
+
+//==============================================
+//原子类型
+// get a TableEnvironment
+val tableEnv: StreamTableEnvironment = ... // see "Create a TableEnvironment" section
+
+val stream: DataStream[Long] = ...
+
+// convert DataStream into Table with field name "myLong"
+val table: Table = tableEnv.fromDataStream(stream, $"myLong")
+```
+
+
+
+### fromDataStream
+
+```scala
+import org.apache.flink.api.scala._
+import java.time.Instant;
+
+// some example case class
+case class User(name: String, score: java.lang.Integer, event_time: java.time.Instant)
+
+// create a DataStream
+val dataStream = env.fromElements(
+    User("Alice", 4, Instant.ofEpochMilli(1000)),
+    User("Bob", 6, Instant.ofEpochMilli(1001)),
+    User("Alice", 10, Instant.ofEpochMilli(1002)))
+
+
+// === EXAMPLE 1 ===
+
+// derive all physical columns automatically
+
+val table = tableEnv.fromDataStream(dataStream)
+table.printSchema()
+// prints:
+// (
+//  `name` STRING,
+//  `score` INT,
+//  `event_time` TIMESTAMP_LTZ(9)
+// )
+
+
+// === EXAMPLE 2 ===
+
+// derive all physical columns automatically
+// but add computed columns (in this case for creating a proctime attribute column)
+
+val table = tableEnv.fromDataStream(
+    dataStream,
+    Schema.newBuilder()
+        .columnByExpression("proc_time", "PROCTIME()")
+        .build())
+table.printSchema()
+// prints:
+// (
+//  `name` STRING,
+//  `score` INT NOT NULL,
+//  `event_time` TIMESTAMP_LTZ(9),
+//  `proc_time` TIMESTAMP_LTZ(3) NOT NULL *PROCTIME* AS PROCTIME()
+//)
+
+
+// === EXAMPLE 3 ===
+
+// derive all physical columns automatically
+// but add computed columns (in this case for creating a rowtime attribute column)
+// and a custom watermark strategy
+
+val table =
+    tableEnv.fromDataStream(
+        dataStream,
+        Schema.newBuilder()
+            .columnByExpression("rowtime", "CAST(event_time AS TIMESTAMP_LTZ(3))")
+            .watermark("rowtime", "rowtime - INTERVAL '10' SECOND")
+            .build())
+table.printSchema()
+// prints:
+// (
+//  `name` STRING,
+//  `score` INT,
+//  `event_time` TIMESTAMP_LTZ(9),
+//  `rowtime` TIMESTAMP_LTZ(3) *ROWTIME* AS CAST(event_time AS TIMESTAMP_LTZ(3)),
+//  WATERMARK FOR `rowtime`: TIMESTAMP_LTZ(3) AS rowtime - INTERVAL '10' SECOND
+// )
+
+
+// === EXAMPLE 4 ===
+
+// derive all physical columns automatically
+// but access the stream record's timestamp for creating a rowtime attribute column
+// also rely on the watermarks generated in the DataStream API
+
+// we assume that a watermark strategy has been defined for `dataStream` before
+// (not part of this example)
+val table =
+    tableEnv.fromDataStream(
+        dataStream,
+        Schema.newBuilder()
+            .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+            .watermark("rowtime", "SOURCE_WATERMARK()")
+            .build())
+table.printSchema()
+// prints:
+// (
+//  `name` STRING,
+//  `score` INT,
+//  `event_time` TIMESTAMP_LTZ(9),
+//  `rowtime` TIMESTAMP_LTZ(3) *ROWTIME* METADATA,
+//  WATERMARK FOR `rowtime`: TIMESTAMP_LTZ(3) AS SOURCE_WATERMARK()
+// )
+
+
+// === EXAMPLE 5 ===
+
+// define physical columns manually
+// in this example,
+//   - we can reduce the default precision of timestamps from 9 to 3
+//   - we also project the columns and put `event_time` to the beginning
+
+val table =
+    tableEnv.fromDataStream(
+        dataStream,
+        Schema.newBuilder()
+            .column("event_time", "TIMESTAMP_LTZ(3)")
+            .column("name", "STRING")
+            .column("score", "INT")
+            .watermark("event_time", "SOURCE_WATERMARK()")
+            .build())
+table.printSchema()
+// prints:
+// (
+//  `event_time` TIMESTAMP_LTZ(3) *ROWTIME*,
+//  `name` VARCHAR(200),
+//  `score` INT
+// )
+// note: the watermark strategy is not shown due to the inserted column reordering projection
+
+
+```
+
+```java
+public static class User {
+
+    public final String name;
+
+    public final Integer score;
+
+    public User(String name, Integer score) {
+        this.name = name;
+        this.score = score;
+    }
+}
+
+// create a DataStream
+DataStream<User> dataStream = env.fromElements(
+    new User("Alice", 4),
+    new User("Bob", 6),
+    new User("Alice", 10));
+
+// since fields of a RAW type cannot be accessed, every stream record is treated as an atomic type
+// leading to a table with a single column `f0`
+
+Table table = tableEnv.fromDataStream(dataStream);
+table.printSchema();
+// prints:
+// (
+//  `f0` RAW('User', '...')
+// )
+
+// instead, declare a more useful data type for columns using the Table API's type system
+// in a custom schema and rename the columns in a following `as` projection
+
+Table table = tableEnv
+    .fromDataStream(
+        dataStream,
+        Schema.newBuilder()
+            .column("f0", DataTypes.of(User.class))
+            .build())
+    .as("user");
+table.printSchema();
+// prints:
+// (
+//  `user` *User<`name` STRING,`score` INT>*
+// )
+
+// data types can be extracted reflectively as above or explicitly defined
+
+Table table3 = tableEnv
+    .fromDataStream(
+        dataStream,
+        Schema.newBuilder()
+            .column(
+                "f0",
+                DataTypes.STRUCTURED(
+                    User.class,
+                    DataTypes.FIELD("name", DataTypes.STRING()),
+                    DataTypes.FIELD("score", DataTypes.INT())))
+            .build())
+    .as("user");
+table.printSchema();
+// prints:
+// (
+//  `user` *User<`name` STRING,`score` INT>*
+// )
+```
+
+```scala
+// create some DataStream
+val dataStream: DataStream[(Long, String)] = env.fromElements(
+    (12L, "Alice"),
+    (0L, "Bob"))
+
+
+// === EXAMPLE 1 ===
+
+// register the DataStream as view "MyView" in the current session
+// all columns are derived automatically
+
+tableEnv.createTemporaryView("MyView", dataStream)
+
+tableEnv.from("MyView").printSchema()
+
+// prints:
+// (
+//  `_1` BIGINT NOT NULL,
+//  `_2` STRING
+// )
+
+
+// === EXAMPLE 2 ===
+
+// register the DataStream as view "MyView" in the current session,
+// provide a schema to adjust the columns similar to `fromDataStream`
+
+// in this example, the derived NOT NULL information has been removed
+
+tableEnv.createTemporaryView(
+    "MyView",
+    dataStream,
+    Schema.newBuilder()
+        .column("_1", "BIGINT")
+        .column("_2", "STRING")
+        .build())
+
+tableEnv.from("MyView").printSchema()
+
+// prints:
+// (
+//  `_1` BIGINT,
+//  `_2` STRING
+// )
+
+
+// === EXAMPLE 3 ===
+
+// use the Table API before creating the view if it is only about renaming columns
+
+tableEnv.createTemporaryView(
+    "MyView",
+    tableEnv.fromDataStream(dataStream).as("id", "name"))
+
+tableEnv.from("MyView").printSchema()
+
+// prints:
+// (
+//  `id` BIGINT NOT NULL,
+//  `name` STRING
+// )
+```
+
+### toDataStream
+
+```scala
+import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.table.api.DataTypes
+
+case class User(name: String, score: java.lang.Integer, event_time: java.time.Instant)
+
+tableEnv.executeSql(
+  """
+  CREATE TABLE GeneratedTable (
+    name STRING,
+    score INT,
+    event_time TIMESTAMP_LTZ(3),
+    WATERMARK FOR event_time AS event_time - INTERVAL '10' SECOND
+  )
+  WITH ('connector'='datagen')
+  """
+)
+
+val table = tableEnv.from("GeneratedTable")
+
+
+// === EXAMPLE 1 ===
+
+// use the default conversion to instances of Row
+
+// since `event_time` is a single rowtime attribute, it is inserted into the DataStream
+// metadata and watermarks are propagated
+
+val dataStream: DataStream[Row] = tableEnv.toDataStream(table)
+
+
+// === EXAMPLE 2 ===
+
+// a data type is extracted from class `User`,
+// the planner reorders fields and inserts implicit casts where possible to convert internal
+// data structures to the desired structured type
+
+// since `event_time` is a single rowtime attribute, it is inserted into the DataStream
+// metadata and watermarks are propagated
+
+val dataStream: DataStream[User] = tableEnv.toDataStream(table, classOf[User])
+
+// data types can be extracted reflectively as above or explicitly defined
+
+val dataStream: DataStream[User] =
+    tableEnv.toDataStream(
+        table,
+        DataTypes.STRUCTURED(
+            classOf[User],
+            DataTypes.FIELD("name", DataTypes.STRING()),
+            DataTypes.FIELD("score", DataTypes.INT()),
+            DataTypes.FIELD("event_time", DataTypes.TIMESTAMP_LTZ(3))))
+```
+
+### fromChangelogStream
+
+```scala
+/ === EXAMPLE 1 ===
+
+// interpret the stream as a retract stream
+
+// create a changelog DataStream
+val dataStream = env.fromElements(
+    Row.ofKind(RowKind.INSERT, "Alice", Int.box(12)),
+    Row.ofKind(RowKind.INSERT, "Bob", Int.box(5)),
+    Row.ofKind(RowKind.UPDATE_BEFORE, "Alice", Int.box(12)),
+    Row.ofKind(RowKind.UPDATE_AFTER, "Alice", Int.box(100))
+)(Types.ROW(Types.STRING, Types.INT))
+
+
+// interpret the DataStream as a Table
+val table = tableEnv.fromChangelogStream(dataStream)
+
+// register the table under a name and perform an aggregation
+tableEnv.createTemporaryView("InputTable", table)
+tableEnv
+    .executeSql("SELECT f0 AS name, SUM(f1) AS score FROM InputTable GROUP BY f0")
+    .print()
+
+// prints:
+// +----+--------------------------------+-------------+
+// | op |                           name |       score |
+// +----+--------------------------------+-------------+
+// | +I |                            Bob |           5 |
+// | +I |                          Alice |          12 |
+// | -D |                          Alice |          12 |
+// | +I |                          Alice |         100 |
+// +----+--------------------------------+-------------+
+
+
+// === EXAMPLE 2 ===
+
+// interpret the stream as an upsert stream (without a need for UPDATE_BEFORE)
+
+// create a changelog DataStream
+val dataStream = env.fromElements(
+    Row.ofKind(RowKind.INSERT, "Alice", Int.box(12)),
+    Row.ofKind(RowKind.INSERT, "Bob", Int.box(5)),
+    Row.ofKind(RowKind.UPDATE_AFTER, "Alice", Int.box(100))
+)(Types.ROW(Types.STRING, Types.INT))
+
+// interpret the DataStream as a Table
+val table =
+    tableEnv.fromChangelogStream(
+        dataStream,
+        Schema.newBuilder().primaryKey("f0").build(),
+        ChangelogMode.upsert())
+
+// register the table under a name and perform an aggregation
+tableEnv.createTemporaryView("InputTable", table)
+tableEnv
+    .executeSql("SELECT f0 AS name, SUM(f1) AS score FROM InputTable GROUP BY f0")
+    .print()
+
+// prints:
+// +----+--------------------------------+-------------+
+// | op |                           name |       score |
+// +----+--------------------------------+-------------+
+// | +I |                            Bob |           5 |
+// | +I |                          Alice |          12 |
+// | -U |                          Alice |          12 |
+// | +U |                          Alice |         100 |
+// +----+--------------------------------+-------------+
+```
+
+###  toChangelogStream 
+
+```scala
+// create Table with event-time
+tableEnv.executeSql(
+  """
+  CREATE TABLE GeneratedTable (
+    name STRING,
+    score INT,
+    event_time TIMESTAMP_LTZ(3),
+    WATERMARK FOR event_time AS event_time - INTERVAL '10' SECOND
+  )
+  WITH ('connector'='datagen')
+  """
+)
+
+val table = tableEnv.from("GeneratedTable")
+
+
+// === EXAMPLE 1 ===
+
+// convert to DataStream in the simplest and most general way possible (no event-time)
+
+val simpleTable = tableEnv
+    .fromValues(row("Alice", 12), row("Alice", 2), row("Bob", 12))
+    .as("name", "score")
+    .groupBy($"name")
+    .select($"name", $"score".sum())
+
+tableEnv
+    .toChangelogStream(simpleTable)
+    .executeAndCollect()
+    .foreach(println)
+
+// prints:
+// +I[Bob, 12]
+// +I[Alice, 12]
+// -U[Alice, 12]
+// +U[Alice, 14]
+
+
+// === EXAMPLE 2 ===
+
+// convert to DataStream in the simplest and most general way possible (with event-time)
+
+val dataStream: DataStream[Row] = tableEnv.toChangelogStream(table)
+
+// since `event_time` is a single time attribute in the schema, it is set as the
+// stream record's timestamp by default; however, at the same time, it remains part of the Row
+
+dataStream.process(new ProcessFunction[Row, Unit] {
+    override def processElement(
+        row: Row,
+        ctx: ProcessFunction[Row, Unit]#Context,
+        out: Collector[Unit]): Unit = {
+
+        // prints: [name, score, event_time]
+        println(row.getFieldNames(true))
+
+        // timestamp exists twice
+        assert(ctx.timestamp() == row.getFieldAs[Instant]("event_time").toEpochMilli)
+    }
+})
+env.execute()
+
+
+// === EXAMPLE 3 ===
+
+// convert to DataStream but write out the time attribute as a metadata column which means
+// it is not part of the physical schema anymore
+
+val dataStream: DataStream[Row] = tableEnv.toChangelogStream(
+    table,
+    Schema.newBuilder()
+        .column("name", "STRING")
+        .column("score", "INT")
+        .columnByMetadata("rowtime", "TIMESTAMP_LTZ(3)")
+        .build())
+
+// the stream record's timestamp is defined by the metadata; it is not part of the Row
+
+dataStream.process(new ProcessFunction[Row, Unit] {
+    override def processElement(
+        row: Row,
+        ctx: ProcessFunction[Row, Unit]#Context,
+        out: Collector[Unit]): Unit = {
+
+        // prints: [name, score]
+        println(row.getFieldNames(true))
+
+        // timestamp exists once
+        println(ctx.timestamp())
+    }
+})
+env.execute()
+
+
+// === EXAMPLE 4 ===
+
+// for advanced users, it is also possible to use more internal data structures for better
+// efficiency
+
+// note that this is only mentioned here for completeness because using internal data structures
+// adds complexity and additional type handling
+
+// however, converting a TIMESTAMP_LTZ column to `Long` or STRING to `byte[]` might be convenient,
+// also structured types can be represented as `Row` if needed
+
+val dataStream: DataStream[Row] = tableEnv.toChangelogStream(
+    table,
+    Schema.newBuilder()
+        .column(
+            "name",
+            DataTypes.STRING().bridgedTo(classOf[StringData]))
+        .column(
+            "score",
+            DataTypes.INT())
+        .column(
+            "event_time",
+            DataTypes.TIMESTAMP_LTZ(3).bridgedTo(class[Long]))
+        .build())
+
+// leads to a stream of Row(name: StringData, score: Integer, event_time: Long)
+```
+
+
+
+
+
+## 更新表
+
+### changelog
+
+```scala
+import org.apache.flink.api.scala.typeutils.Types
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.table.api.bridge.scala.StreamTableEnvironment
+import org.apache.flink.types.Row
+
+// create environments of both APIs
+val env = StreamExecutionEnvironment.getExecutionEnvironment
+val tableEnv = StreamTableEnvironment.create(env)
+
+// create a DataStream
+val dataStream = env.fromElements(
+  Row.of("Alice", Int.box(12)),
+  Row.of("Bob", Int.box(10)),
+  Row.of("Alice", Int.box(100))
+)(Types.ROW(Types.STRING, Types.INT))
+
+// interpret the insert-only DataStream as a Table
+val inputTable = tableEnv.fromDataStream(dataStream).as("name", "score")
+
+// register the Table object as a view and query it
+// the query contains an aggregation that produces updates
+tableEnv.createTemporaryView("InputTable", inputTable)
+val resultTable = tableEnv.sqlQuery("SELECT name, SUM(score) FROM InputTable GROUP BY name")
+
+// interpret the updating Table as a changelog DataStream
+val resultStream = tableEnv.toChangelogStream(resultTable)
+
+// add a printing sink and execute in DataStream API
+resultStream.print()
+env.execute()
+
+// prints:
+// +I[Alice, 12]             --insert
+// +I[Bob, 10]
+// -U[Alice, 12]             --update before
+// +U[Alice, 112]            --update after
+```
+
