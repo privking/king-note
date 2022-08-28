@@ -1,5 +1,99 @@
 # HashMap
 
+--------------------------
+
+2022-08-27
+
+计算hashmap规则
+
+```java
+/*Computes key.hashCode() and spreads (XORs) higher bits of hash to lower. Because the table uses power-of-two masking, sets of hashes that vary only in bits above the current mask will always collide. (Among known examples are sets of Float keys holding consecutive whole numbers in small tables.) So we apply a transform that spreads the impact of higher bits downward. There is a tradeoff between speed, utility, and quality of bit-spreading. Because many common sets of hashes are already reasonably distributed (so don't benefit from spreading), and because we use trees to handle large sets of collisions in bins, we just XOR some shifted bits in the cheapest possible way to reduce systematic lossage, as well as to incorporate impact of the highest bits that would otherwise never be used in index calculations because of table bounds.*/
+static final int hash(Object key) {
+    int h;
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+}
+```
+
+将高位再次异或的原因是减少hash碰撞
+
+1.hashmap 的桶是2次方倍
+
+2.Float这类特殊的hashcode计算方式(符号+指数+有效数字)
+
+```java
+/*
+Returns a representation of the specified floating-point value according to the IEEE 754 floating-point "single format" bit layout, preserving Not-a-Number (NaN) values.
+Bit 31 (the bit that is selected by the mask 0x80000000) represents the sign of the floating-point number. Bits 30-23 (the bits that are selected by the mask 0x7f800000) represent the exponent. Bits 22-0 (the bits that are selected by the mask 0x007fffff) represent the significand (sometimes called the mantissa) of the floating-point number.
+If the argument is positive infinity, the result is 0x7f800000.
+If the argument is negative infinity, the result is 0xff800000.
+If the argument is NaN, the result is the integer representing the actual NaN value. Unlike the floatToIntBits method, floatToRawIntBits does not collapse all the bit patterns encoding a NaN to a single "canonical" NaN value.
+In all cases, the result is an integer that, when given to the intBitsToFloat(int) method, will produce a floating-point value the same as the argument to floatToRawIntBits.
+Params:
+value – a floating-point number.
+Returns:
+the bits that represent the floating-point number.
+Since:
+1.3
+*/
+ public static native int floatToRawIntBits(float value);
+ 
+ /*
+ Returns a representation of the specified floating-point value according to the IEEE 754 floating-point "single format" bit layout.
+Bit 31 (the bit that is selected by the mask 0x80000000) represents the sign of the floating-point number. Bits 30-23 (the bits that are selected by the mask 0x7f800000) represent the exponent. Bits 22-0 (the bits that are selected by the mask 0x007fffff) represent the significand (sometimes called the mantissa) of the floating-point number.
+If the argument is positive infinity, the result is 0x7f800000.
+If the argument is negative infinity, the result is 0xff800000.
+If the argument is NaN, the result is 0x7fc00000.
+In all cases, the result is an integer that, when given to the intBitsToFloat(int) method, will produce a floating-point value the same as the argument to floatToIntBits (except all NaN values are collapsed to a single "canonical" NaN value).
+Params:
+value – a floating-point number.
+Returns:
+the bits that represent the floating-point number.
+ */
+   public static int floatToIntBits(float value) {
+        int result = floatToRawIntBits(value);
+        // Check for NaN based on values of bit fields, maximum
+        // exponent and nonzero significand.
+        if ( ((result & FloatConsts.EXP_BIT_MASK) ==
+              FloatConsts.EXP_BIT_MASK) &&
+             (result & FloatConsts.SIGNIF_BIT_MASK) != 0)
+            result = 0x7fc00000;
+        return result;
+    }
+    
+     public static int hashCode(float value) {
+        return floatToIntBits(value);
+    }
+```
+
+```java
+System.out.println(Integer.toHexString(new Float(1).hashCode()));
+System.out.println(Integer.toHexString(new Float(2).hashCode()));
+System.out.println(Integer.toHexString(new Float(3).hashCode()));
+System.out.println(Integer.toHexString(new Float(4).hashCode()));
+System.out.println(Integer.toHexString(new Float(5).hashCode()));
+System.out.println(Integer.toHexString(new Float(6).hashCode()));
+System.out.println(Integer.toHexString(new Float(7).hashCode()));
+System.out.println(Integer.toHexString(new Float(8).hashCode()));
+System.out.println(Integer.toHexString(new Float(9).hashCode()));
+System.out.println(Integer.toHexString(new Float(10).hashCode()));
+System.out.println(Integer.toHexString(new Float(11).hashCode()));
+//        3f800000
+//        40000000
+//        40400000
+//        40800000
+//        40a00000
+//        40c00000
+//        40e00000
+//        41000000
+//        41100000
+//        41200000
+//        41300000
+```
+
+
+
+------------------------------------
+
 HashMap是由**数组，链表，红黑树**组成的数据结构
 
 数组里面每个地方都存了Key-Value这样的实例，在Java7叫**Entry**在Java8中叫**Node**。
