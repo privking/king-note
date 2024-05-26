@@ -139,10 +139,17 @@ val rdd2: RDD[(Int, Iterable[Int])] = rdd.groupBy(_%2)
 - 以指定的随机种子随机抽样出比例为fraction的数据，(抽取到的数量是: size * fraction). 需要注意的是得到的结果并不能保证准确的比
 - withReplacement表示是抽出的数据是否放回，true为有放回的抽样，false为无放回的抽样. **放回表示数据有可能会被重复抽取到**, false 则不可能重复抽取到. 如果是**false, 则fraction必须是:[0,1], 是 true 则大于等于0,大于1表示几倍**就可以了.
 - seed用于指定随机数生成器种子。 一般用默认的, 或者传入当前的时间戳
+- 可以用于判断数据倾斜
 
 ### distinct
 
 对 RDD 中元素执行去重操作. 参数表示任务的数量.默认值和分区数保持一致
+
+```scala
+map(x => (x, null)).reduceByKey((x, _) => x, numPartitions).map(_._1)
+```
+
+
 
 ### coalesce
 
@@ -150,7 +157,7 @@ val rdd2: RDD[(Int, Iterable[Int])] = rdd.groupBy(_%2)
 
 默认不进行shuffle,第二个参数可以控制是否shuffle,第三个参数为分区器（默认hash）
 
-默认不能增加分区，加上shuffle可以增加
+默认不能增加分区，**加上shuffle可以增加**
 
 ```scala
 rdd1.coalesce(2)
@@ -289,6 +296,8 @@ val rdd3: RDD[(Int, Long)] = rdd.zipWithIndex()
 
 ## RDD转换(Key-Value)
 
+![image-20240427182519101](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1714213519-7770f7.png)
+
 大多数的 Spark 操作可以用在任意类型的 RDD 上, 但是有一些比较特殊的操作只能用在key-value类型的 RDD 上.
 
 这些特殊操作大多都涉及到 shuffle 操作, 比如: 按照 key 分组(group), 聚集(aggregate)等.
@@ -404,11 +413,11 @@ val rdd2 = rdd.combineByKey(
 - reduceByKey
   - 分区内聚合和分区间聚合逻辑相同
 - foldByKey
-  - 分区内和分区间聚合逻辑相同，但是有初始值
+  - 分区内和分区间聚合逻辑相同，但是有初始值,**返回值value类型与初始值直接相关**
 - aggregateByKey
   - 有初始值，分区内和分区间逻辑可以不同
 - combineByKey
-  - 可以根据key的第一个value计算初始值，分区内和分区间逻辑可以不同
+  - 可以根据key的第一个value计算初始值（**类型可以变化**），分区内和分区间逻辑可以不同
 
 4个函数底层都调用了combineByKeyWithClassTag
 
@@ -526,3 +535,14 @@ rdd.sum
 ### foreachPartition
 
 每个分区执行一次
+
+
+
+### save相关算子
+
+saveAsTextFile
+
+saveAsObjectFile
+
+saveAsSequenceFile
+
