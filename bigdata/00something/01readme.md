@@ -1543,7 +1543,7 @@ enum BlockUCState {
 
 ### HDFS读数据	
 
-![image-20240312221817656](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1710253097-76a223.png)
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1710253097-76a223.png" alt="image-20240312221817656" />
 
 
 
@@ -2933,8 +2933,23 @@ public static void main(String[] args) {
   - 有初始值，分区内和分区间逻辑可以不同
 - combineByKey
   - 可以根据key的第一个value计算初始值，分区内和分区间逻辑可以不同
+- groupByKey
+  - value是迭代器
 
-4个函数底层都调用了combineByKeyWithClassTag
+
+5个函数底层都调用了combineByKeyWithClassTag
+
+
+
+
+
+### Spark rdd join
+
+当两个rdd分区数一致时是oneToOneDependency
+
+当两个rdd分区数不一致时是ShuffleDependency
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716820378-14383a.png" alt="image-20240527223257856" style="zoom:50%;" align="left"/>
 
 
 
@@ -3094,6 +3109,401 @@ DataFrame存储在off-heap（堆外内存）中，由操作系统直接管理（
 
 
 
+### SparkStreaming
+
+```scala
+  val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("NetworkWordCount")
+  val ssc: StreamingContext = new StreamingContext(conf, Seconds(1))
+  val lines: ReceiverInputDStream[String] = ssc.socketTextStream("localhost", 9999)
+  val words: DStream[String] = lines.flatMap(_.split(" "))
+  val pairs: DStream[(String, Int)] = words.map(word => (word, 1))
+  val wordCounts: DStream[(String, Int)] = pairs.reduceByKey(_ + _)
+  // Print the first ten elements of each RDD generated in this DStream to the console
+  wordCounts.print()
+  ssc.start()             // Start the computation
+  ssc.awaitTermination()  // Wait for the computation to terminate
+```
+
+**DStream**
+
+**离散流**或**DStream**是 Spark Streaming 提供的基本抽象。它表示连续的数据流，可以是从源接收的输入数据流，也可以是通过转换输入流生成的处理后的数据流。在内部，DStream 由一系列连续的 RDD 表示，这是 Spark 对不可变分布式数据集的抽象
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716824742-6b031d.png" alt="Spark 流" style="zoom:50%;" align="left"/>
+
+**UpdateStateByKey 有状态操作**
+
+```scala
+def updateFunction(newValues: Seq[Int], runningCount: Option[Int]): Option[Int] = {
+    val newCount = ...  // add the new values with the previous running count to get the new count
+    Some(newCount)
+}
+val runningCounts = pairs.updateStateByKey[Int](updateFunction _)
+```
+
+**窗口操作**
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716825269-665dc3.png" alt="Spark 流" style="zoom:50%;" align="left"/>
+
+每次窗口在源 DStream 上*滑动*时，都会对位于窗口内的源 RDD 进行组合和操作，以生成窗口 DStream 的 RDD。图中，操作应用于最后 3 个时间单位的数据，并滑动 2 个时间单位。这表明任何窗口操作都需要指定两个参数。
+
+- *窗口长度*——窗口的持续时间（图中的 3）。
+- *滑动间隔*——执行窗口操作的间隔（图中为 2）。
+
+这两个参数必须是源DStream的批处理间隔的倍数（图中为1）。
+
+```scala
+// Reduce last 30 seconds of data, every 10 seconds
+val windowedWordCounts = pairs.reduceByKeyAndWindow((a:Int,b:Int) => (a + b), Seconds(30), Seconds(10))
+```
+
+
+
+**Checkpoint**
+
+Spark Streaming应用程序如果不手动停止，则将一直运行下去，在实际中应用程序一般是24小时*7天不间断运行的，因此Streaming必须对诸如系统错误，JVM出错等与程序逻辑无关的错误(failures)具体很强的弹性，具备一定的非应用程序出错的容错性。Spark Streaming的Checkpoint机制便是为此设计的，它将足够多的信息checkpoint到某些具备容错性的存储系统如hdfs上，以便出错时能够迅速恢复。有两种数据可以checkpoint：
+
+Metadata checkpointing:
+
+- 将流式计算的信息保存到具备容错性的存储上比如HDFS，Metadata Checkpointing适用于当streaming应用程序Driver所在的节点出错时能够恢复，元数据包括：
+- Configuration(配置信息) : 创建streaming应用程序的配置信息
+- Dstream operations : 在streaming应用程序中定义的DStreaming操作
+- Incomplete batches : 在队列中没有处理完的作业
+
+Data checkpointing:
+
+- 对有状态的transformation操作进行checkpointing
+
+
+
+### Spark Structured Streaming
+
+结构化流式处理是一种基于 Spark SQL 引擎构建的可扩展且容错的流式处理引擎。
+
+可以像在静态数据上表达批量计算一样表达流式计算。
+
+Spark SQL 引擎将负责逐步和连续地运行它，并在流数据不断到达时更新最终结果
+
+默认情况下，结构化流查询使用*微批处理*引擎进行处理，该引擎将数据流作为一系列小批量作业进行处理，从而实现低至 100 毫秒的端到端延迟和恰好一次的容错保证。但是，自 Spark 2.3 以来，我们引入了一种称为**连续处理**的新低延迟处理模式，它可以实现低至 1 毫秒的端到端延迟，并保证至少一次。无需更改查询中的数据集/数据帧操作，您将能够根据应用程序需求选择模式。
+
+```scala
+val spark: SparkSession = SparkSession
+    .builder
+    .appName("StructuredNetworkWordCount")
+    .getOrCreate()
+
+  import spark.implicits._
+  // Create DataFrame representing the stream of input lines from connection to localhost:9999
+  val lines: DataFrame = spark.readStream
+    .format("socket")
+    .option("host", "localhost")
+    .option("port", 9999)
+    .load()
+
+  // Split the lines into words
+  val words: Dataset[String] = lines.as[String].flatMap(_.split(" "))
+
+  // Generate running word count
+  val wordCounts: DataFrame = words.groupBy("value").count()
+
+  val query: StreamingQuery = wordCounts.writeStream
+    .outputMode("complete")
+    .format("console")
+    .start()
+
+  query.awaitTermination()
+```
+
+**输出模式**
+
+- *完整模式*（*Complete*）- 整个更新的结果表将写入外部存储。由存储连接器决定如何处理整个表的写入。
+- *追加模式*（*Append*）- 只有自上次触发以来追加到结果表中的新行才会写入外部存储。这仅适用于结果表中现有行预计不会发生变化的查询。
+- *更新模式*（*Update*）- 仅将自上次触发以来在结果表中更新的行写入外部存储（自 Spark 2.1.1 起可用）。请注意，这与完整模式不同，因为此模式仅输出自上次触发以来已更改的行。如果查询不包含聚合，则它将相当于追加模式。
+
+
+
+**事件时间下的窗口处理**
+
+1. 窗口10 min ,步长 5min ，在12:10需要计算的有两个窗口 12:00 - 12:10、12:05 - 12:15
+
+```scala
+// Group the data by window and word and compute the count of each group
+val windowedCounts = words.groupBy(
+  window($"timestamp", "10 minutes", "5 minutes"),
+  $"word"
+).count()
+```
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716826925-b5e3d8.png" alt="窗口操作" style="zoom:50%;" align="left"/>
+
+2.延迟数据和水印
+
+***水印***可以让引擎自动跟踪数据中的当前事件时间并尝试相应地清理旧状态。 可以通过指定事件时间列和数据在事件时间方面预计有多晚的阈值来定义查询的水印
+
+***阈值内的晚期数据将被聚合，但晚于阈值的数据将开始被删除***
+
+```scala
+val windowedCounts = words
+    .withWatermark("timestamp", "10 minutes")
+    .groupBy(
+        window($"timestamp", "10 minutes", "5 minutes"),
+        $"word")
+    .count()
+```
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716827276-01870c.png" alt="更新模式下的水印" style="zoom:50%;" align="left"/>
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716827330-3baca6.png" alt="附加模式下的水印" style="zoom:50%;" align="left"/>
+
+**窗口类型**
+
+滚动（固定）、滑动和会话
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1716827495-c706e3.jpg" alt="时间窗口的类型" style="zoom:70%;" align="left"/>
+
+### Spark Stream 背压
+
+batch processing time > batch interval 的时候，也就是每个批次数据处理的时间要比 Spark Streaming 批处理间隔时间长；
+
+越来越多的数据被接收，但是数据的处理速度没有跟上，导致系统开始出现数据堆积
+
+Spark 1.5 版本之前，对于 Receiver-based 数据接收器，我们可以通过配置 `spark.streaming.receiver.maxRate` 参数来限制每个 receiver 每秒最大可以接收的记录的数据；对于 Direct Approach 的数据接收，我们可以通过配置 `spark.streaming.kafka.maxRatePerPartition` 参数来限制每次作业中每个 Kafka 分区最多读取的记录条数
+
+- 我们需要事先估计好集群的处理速度以及消息数据的产生速度；
+- 这两种方式需要人工参与，修改完相关参数之后，我们需要手动重启 Spark Streaming 应用程序；
+- 如果当前集群的处理能力高于我们配置的 maxRate，而且 producer 产生的数据高于 maxRate，这会导致集群资源利用率低下，而且也会导致数据不能够及时处理。
+
+
+
+**背压组件**
+
+RateController（driver）： RateController 组件是 JobScheduler 的监听器，主要监听集群所有作业的提交、运行、完成情况，并从 BatchInfo 实例中获取以下信息，交给速率估算器（RateEstimator）做速率的估算
+
+RateEstimator(driver)：Spark 2.x 只支持基于 PID 的速率估算器
+
+RateLimiter(executor)：RateLimiter是一个抽象类，它并不是Spark本身实现的，而是借助了第三方Google的`GuavaRateLimiter`来产生的。它实质上是一个限流器，也可以叫做令牌，如果Executor中task每秒计算的速度大于该值则阻塞
+
+
+
+## MySQL
+
+### ACID
+
+- Atomicity（原子性）：一个事务必须被视为一个不可分割的最小工作单元，整个事务中的所有操作要么全部提交成功，要么全部失败回滚.
+- Consistency（一致性）：数据库总是从一个一致性状态转换到另一个一致状态。
+- Isolation（隔离性）：通常来说，一个事务所做的修改在最终提交以前，对其他事务是不可见的。
+- Durability（持久性）：一旦事务提交，则其所做的修改就会永久保存到数据库中。
+
+
+
+### 事务隔离级别
+
+**读未提交（READ UNCOMMITTED）**
+
+​	所有事务都可以看到其他未提交事务的执行结果
+
+​	引发的问题是——**脏读(Dirty Read)**：读取到了未提交的数据
+
+**读提交 （READ COMMITTED）**
+
+​	只能读取到已经提交的事务的数据
+
+​	引发的问题是——**不可重复读(Nonrepeatable Read)**：在同一个事务中两次查询结果可能不同
+
+**可重复读 （REPEATABLE READ）**
+
+​	在同一个事务中多次查询的结果一致,
+
+​	使用行级锁，锁定该行，事务A多次读取操作完成后才释放该锁，这个时候才允许其他事务更改刚才的数据,**针对update操作**
+
+​	引发的问题是——**幻读(Phantom Read)**：读取到了其他事务新增的数据，**针对insert delete操作**
+
+​	innoDB通过**mvcc和间隙锁**解决幻读问题
+
+**串行化 （SERIALIZABLE）**
+
+​	强制事务排序，使之不可能相互冲突
+
+
+
+### 锁机制
+
+**共享锁与排他锁**
+
+- 共享锁（S 读锁）：其他事务可以读，但不能写。
+- 排他锁（X 写锁） ：其他事务不能读取，也不能写。
+
+
+
+**锁粒度**
+
+MyISAM 支持表级锁
+
+InnoDB 支持***行锁和表锁*** 的多粒度锁
+
+- 为了实现多粒度锁机制，内部使用两种意向锁 ***意向共享锁（IS）***和 ***意向排他锁（IX）*** 这两种锁都是***表锁***
+
+  - 意向共享锁/读锁（IS Lock）：当事务想要获得一张表中某几行的读锁（行级读锁）时，InnoDB 存储引擎会自动地先获取该表的意向读锁（表级锁）
+
+  - 意向排他锁/写锁（IX Lock）：当事务想要获得一张表中某几行的写锁（行级写锁）时，InnoDB 存储引擎会自动地先获取该表的意向写锁（表级锁）
+
+  - 如果想要申请表锁，则可以判断是否有意向锁或者有表锁，不用一行数据一行数据判断是有有行锁，***提高效率***
+
+InnoDB间隙锁：
+
+- 用范围条件而不是相等条件检索数据，并请求共享或排他锁时，InnoDB会给符合条件的已有数据记录的索引项加锁；对于键值在***条件范围内但并不存在的记录***，叫做“间隙（GAP)”，InnoDB也会对这个“间隙”加锁，这种锁机制就是所谓的间隙锁（Next-Key锁
+- 使用间隙锁可以防止***幻读***
+
+
+
+**InnoDB行锁**
+
+InnoDB 行锁是通过给索引上的索引项加锁来实现的，***只有通过索引条件检索数据***，InnoDB 才使用行级锁，否则，InnoDB 将使用表锁
+
+
+
+**两段锁**
+
+加锁分为两个步骤，`begin`  最后`commit`释放所有锁
+
+一开始并不知道后续执行的sql,所以没有办法对所有用到的数据加锁，所以可能会导致***死锁***
+
+- 死锁是指两个或多个事务在同一资源上相互占用，并请求锁定对方占用的资源
+- 数据库系统实现了***死锁检测和死锁超时***的机制。InnoDB存储引擎能检测到死锁的循环依赖并立即返回一个错误
+- 在涉及外部锁，或涉及表锁的情况下，InnoDB 并不能完全自动检测到死锁， 这需要通过设置锁等待超时参数 innodb_lock_wait_timeout 来解决
+- 死锁发生以后，只有部分或完全***回滚其中一个事务***，才能打破死锁，InnoDB目前处理死锁的方法是，将***持有最少行级排他锁的事务进行回滚***。
+
+
+
+**乐观锁&悲观锁**
+
+乐观锁(Optimistic Lock)：假设不会发生并发冲突，只在提交操作时检查是否违反数据完整性，在***业务中插入时判断版本号或时间戳***
+
+悲观锁(Pessimistic Lock)：假定会发生并发冲突，屏蔽一切可能违反数据完整性的操作。
+
+
+
+### MVCC
+
+mvcc的实现原理主要依赖于记录中的隐藏字段，undolog，read view来实现的
+
+**隐藏字段**
+
+DB_ROW_ID是数据库默认为该行记录生成的唯一隐式主键
+DB_TRX_ID是当前操作该记录的事务ID
+DB_ROLL_PTR是一个回滚指针，用于配合undo日志，指向上一个旧版本
+
+如果是删除数据会用**Delete_Bit标识**
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1717511786-25b96f.png" alt="在这里插入图片描述"  align="left" />
+
+**ReadView**
+
+Read View是事务进行快照读操作的时候生产的读视图，在该事务执行快照读的那一刻，会生成一个数据系统当前的快照，记录并***维护系统当前活跃事务的id***，事务的id值是递增的,***Read View的最大作用是用来做可见性判断的***
+
+Read View中的三个全局属性：
+
+m_ids:一个数值列表，用来维护Read View生成时刻系统正活跃的事务ID
+min_trx_id:记录trx_list列表中事务ID最小的ID
+max_trx_id:Read View生成时刻系统尚未分配的下一个事务ID
+creator_trx_id:当前事务id
+
+具体的比较规则如下：
+
+1、如果被访问版本的trx_id属性值与ReadView中的creator_trx_id值相同，意味着当前事务在访问它自己修改过的记录，所以该版本可以被当前事务访问。
+
+2、如果被访问版本的trx_id属性值小于ReadView中的min_trx_id值，表明生成该版本的事务在当前事务生成ReadView前已经提交，所以该版本可以被当前事务访问。
+
+按照ReadView中的比较规则(后两条)：
+
+3、如果被访问版本的trx_id属性值大于或等于ReadView中的max_trx_id值，表明生成该版本的事务在当前事务生成ReadView后才开启，所以该版本不可以被当前事务访问。
+4、如果被访问版本的trx_id属性值在ReadView的min_trx_id和max_trx_id之间(min_trx_id < trx_id < max_trx_id)，那就需要判断一下trx_id属性值是不是在m_ids列表中，如果在，说明创建ReadView时生成该版本的事务还是活跃的，该版本不可以被访问；如果不在，说明创建ReadView时生成该版本的事务已经被提交，该版本可以被访问。
+
+**读已提交和可重复度区别**
+
+可重复读：某个事务的对某条记录的第一次快照读会创建一个快照即Read View,将当前系统活跃的其他事务记录起来，此后在调用快照读的时候，还是使用的是***同一个Read View***
+
+读已提交：***每次快照读都会新生成一个快照和Read View***,这就是我们在RC级别下的事务中可以看到别的事务提交的更新的原因
+
+
+
+### redo log
+
+**InnoDB存储引擎是以页为单位来管理存储空间的**。在访问真正的页面之前，需要把在 磁盘上的页 缓存到内存中的 Buffer Pool 之后才可以访问。所有的变更都必须新更新缓冲池中的数据，然后缓冲池中的脏页会以一定的频率被刷入磁盘（checkPoint机制），通过缓冲池来优化CPU和磁盘之间的鸿沟，这样就可以保证整体的性能不会下降太快。
+
+**为什么需要redolog**
+
+对于一个已经提交的事务，在事务提交后即使系统发生了崩溃，这个事务对数据库中所做的更改也不能丢失
+
+怎么保证持久性：
+
+1. 在事务提交完成之前把该事务所修改的所有页面都刷新到磁盘
+   1. ***修改量与刷新磁盘工作量严重不成比例***：有时候我们仅仅修改了某个页面中的一个字节，但是我们知道在InnoDB中是以页为单位来进行磁盘IO的，也就是说我们在该事务提交时不得不将一个完整的页面从内存中刷新到磁盘。我们又知道一个页面默认是16KB大小，只修改一个字节就要刷新16KB的数据到磁盘上显然是太小题大做了。
+   2. ***随机IO刷新较慢***：一个事务可能包含很多语句，即使是一条语句也可能修改许多页面，假如该卖务修改的这些页面可能并不相邻，这就意味着在将某个事务修改的Buffer Pool中的页面刷新到磁盘时，需要进行很多的随机IO，随机IO比顺序IO要慢，尤其对于传统的机械硬盘来说
+2. ***每次事务提交时就把该事务在内存中修改过的全部页面刷新到磁盘，只需要把修改了哪些东西记录一下就好***
+
+
+
+redo log 用来实现事务的持久性，即事务 ACID 中的 D。其由两部分组成：
+
+- 一是**内存中的重做缓冲日志（redo log buffer）**，其是 **`易失的`**；
+- 二是**重做日志文件 (redo log file)**，其是 **`持久的`**。
+
+
+
+redo log刷盘策略：**innodb_flush_log_at_trx_commit**
+
+redo log buffer刷盘到redo log file的过程并不是真正的刷到磁盘中去，只是刷入到文件系统缓存（page cache）中去（这是现代操作系统为了提高文件写入效率做的一个优化），真正的写入会交给系统自己来决定（比如page cache足够大了）。那么对于InnoDB来说就存在一个问题，如果交给系统来同步，同样如果系统宕机，那么数据也丢失了（虽然整个系统宕机的概率还是比较小的）
+
+
+设置为0 ：表示每次事务提交时不触发刷盘操作（都没有将redo log buffer中的内容写入 page cache中，其实就是啥也没做）。（系统默认master thread每隔1s进行一次重做日志的同步）
+设置为1 ：表示每次事务提交时都将进行同步，**刷盘**操作（ 默认值）
+设置为2 ：表示每次事务提交时都 只把 redo log buffer 内容写入 page cache，不进行同步。由os自己决定什么时候同步到磁盘文件
+
+
+
+**checkpoint**
+
+磁盘上的redo日志文件不止一个，而是以一个日志文件组的形式出现的。在redo日志写入日志文件组的时候，是从 **`ib_logfile0`** 开始写，如果写满了，就接着 **`ib_logfile1`** 写，以此类推。那如果最后一个文件写满了,那就重新转到 **`ib_logfile0`** 继续写
+
+<img src="https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1717513783-7506f5.png" alt="在这里插入图片描述" style="zoom:70%;" align="left"/>
+
+
+
+### MySQL索引
+
+按数据结构分类可分为：**B+tree索引、Hash索引、Full-text索引**。
+按物理存储分类可分为：**聚簇索引、二级索引（辅助索引）**。
+按字段特性分类可分为：**主键索引、普通索引、前缀索引**。
+按字段个数分类可分为：**单列索引、联合索引**
+
+
+
+**B+Tree聚簇索引**
+
+![b+树](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1717515484-f1bde9.jpg)
+
+浅蓝色的块我们称之为一个磁盘块，可以看到每个磁盘块包含几个数据项（深蓝色所示）和指针（黄色所示）
+
+如果要查找数据项29，那么首先会把磁盘块1由磁盘加载到内存，此时发生一次IO，在内存中用二分查找确定29在17和35之间，锁定磁盘块1的P2指针，内存时间因为非常短（相比磁盘的IO）可以忽略不计，通过磁盘块1的P2指针的磁盘地址把磁盘块3由磁盘加载到内存，发生第二次IO，29在26和30之间，锁定磁盘块3的P2指针，通过指针加载磁盘块8到内存，发生第三次IO，同时内存中做二分查找找到29，结束查询，总计三次IO。真实的情况是，3层的b+树可以表示上百万的数据，如果上百万的数据查找只需要三次IO，性能提高将是巨大的，如果没有索引，每个数据项都要发生一次IO，那么总共需要百万次的IO，显然成本非常非常高。
+
+磁盘块的大小也就是一个数据页的大小，是固定的，如果数据项占的空间越小，**数据项的数量越多，树的高度越低**
+
+B+tree 非叶子节点只存储键值信息， 数据记录都存放在叶子节点中
+
+B+tree 所有叶子节点之间都采用单链表连接。适合MySQL中常见的基于范围的顺序检索场景
+
+
+
+**二级索引**
+
+二级索引的叶子节点并不存储一行完整的表数据，而是存储了聚簇索引所在列的值
+
+二级索引的叶子节点不存储完整的表数据，索引当通过二级索引查询到聚簇索引列值后，还需要回到聚簇索引也就是表数据本身进一步获取数据 （**回表**）
+
+
+
+
+
 
 
 
@@ -3114,29 +3524,26 @@ DataFrame存储在off-heap（堆外内存）中，由操作系统直接管理（
 
 
 
+### CAP理论
 
+- 一致性（C）：在分布式系统分布式系统中的所有数据备份，在同一时刻是否同样的值。（等同于所有节点访问同一份最新的数据副本）
+  - **弱一致性（Weak）**：写入一个数据a成功后，在数据副本上可能读出来，也可能读不出来。**不能保证多长时间之后**每个副本的数据一定是一致的。
+  - **最终一致性（Eventually）**：写入一个数据a成功后，在其他副本有可能读不到a的最新值，但**在某个时间窗口之后保证最终能读到**。可以看做弱一致性的一个特例。这里面的重点是这个时间窗口。
+  - **强一致性（Strict）**：数据a一旦写入成功，在任意副本任意时刻都能读到a的最新值。
+- 可用性（A）：在集群中一部分节点故障后，集群整体是否还能响应客户端的读写请求。（对数据更新具备高可用性）
+- 分区容忍性（P）：以实际效果而言，分区相当于对通信的时限要求。系统如果不能在时限内达成数据一致性，就意味着发生了分区的情况，必须就当前操作在C和A之间做出选择。
 
-MR和Spark区别
+### BASE理论
 
+BASE理论是在CAP定理上，依据行业实践经验，逐渐演化出来的一种分布式方案。
 
-
-Groupbykey 和 reducebykey区别
-
-
-
-yarn提交流程
-
-
-
-kafka消息的顺序性 一致性
-
-
-
-spark rdd dataframe dateset
-
-
-
-Spark 算子
+- （BA）基本可用：分布式系统故障时，允许损失部分可用性，提供基本可用的服务。
+  - 允许在响应时间上的可用性损失：正常情况下，外卖下单需要0.5s；异常情况下，外卖下单需要3s。
+  - 允许在功能上的可用性损失：正常情况下，订单、评价服务都正常；异常情况下，只保证订单服务正常。
+- (S)软状态：分布式系统中，允许存在的一种中间状态，也叫弱状态或柔性状态。
+  - 举例：在下单支付时，让页面显示`支付中`，直到支付数据同步完成。
+- (E)最终一致性：在出现软状态的情况下，经过一段时间后，各项数据最终到底一致。
+  - 举例：在`支付中`这个软状态时，数据并未一致，软状态结束后，最终支付数据达到一致。
 
 
 
