@@ -3054,11 +3054,163 @@ DataFrame存储在off-heap（堆外内存）中，由操作系统直接管理（
 
 **join 不一定发生shuffle**
 
-**hash shuffle 不等同于 hash join ,hash shuffle 数据分发策略 ，hash join 是数据关联策略 。谁然hash shuffle被弃用了但是和hash join 没有关系**
+**hash shuffle 不等同于 hash join ,hash shuffle 数据分发策略 ，hash join 是数据关联策略 。虽然hash shuffle被弃用了但是和hash join 没有关系**
 
 
 
 
+
+### Spark AQE
+
+AQE 是 Spark SQL 的一种动态优化机制，**在运行时，每当 Shuffle Map 阶段执行完毕，AQE 都会结合这个阶段的统计信息，基于既定的规则动态地调整、修正尚未执行的逻辑计划和物理计划，来完成对原始查询语句的运行时优化**
+
+**3大特性：**
+
+***自动分区合并***：在 Shuffle 过后，Reduce Task 数据分布参差不齐，AQE 将自动合并过小的数据分区。
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1718810943-db1f87.webp)
+
+
+
+***Join 策略调整***：如果某张表在过滤之后，尺寸小于广播变量阈值，这张表参与的数据关联就会从 Shuffle Sort Merge Join 降级（Demote）为执行效率更高的 Broadcast Hash Join。
+
+有两个优化规则，一个逻辑规则和一个物理策略分别是：`DemoteBroadcastHashJoin 和 OptimizeLocalShuffleReade`
+
+DemoteBroadcastHashJoin 判断中间文件是否满足广播条件，降级join策略
+
+OptimizeLocalShuffleReader 策略可以省去 Shuffle 常规步骤中的网络分发，Reduce Task 可以就地读取本地节点（Local）的中间文件，完成与广播小表的关联操作 （AQE 依赖的统计信息来自于 Shuffle Map 阶段生成的中间文件，**即使已经将Shuffle Sort Merge Join 就会降级为 Broadcast Hash Join，但join两表都已经按照 Sort Merge Join 的方式走了一半**）
+
+
+
+***自动倾斜处理***：结合配置项，AQE 自动拆分 Reduce 阶段过大的数据分区，降低单个 Reduce Task 的工作负载。
+
+在AQE中，执行子 QueryStages 后，收集每个分区的 shuffle 数据大小和记录数。如果一个分区的数据量或记录数比中位数大N倍，也比预先配置的值大，则判断为倾斜分区
+
+利用 OptimizeSkewedJoin 策略，AQE 会把大分区拆成多个小分区
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1718811408-f7a0e0.webp)
+
+假设表 A 和表 B 执行内连接并且表 A 中的分区 0 是倾斜的。对于正常执行，表 A 和 B 的分区 0 都被洗牌到单个 reducer 进行处理。由于这个 reducer 需要通过网络和进程获取大量数据，因此它可能是延长整个阶段时间的最慢任务。
+
+如上图所示，N个task用于处理表A的偏斜分区0，每个task只读取表A的少数mapper的shuffle输出，并与表B的分区0进行join，将这N个task的结果合并得到最终的join结果. 为了实现这一点，我们更新了 shuffle read API 以允许仅从几个映射器而不是全部读取分区。
+
+在处理过程中，我们可以看到表 **B 的分区 0 将被多次读取**。尽管引入了开销，但性能改进仍然很显着。
+
+不过这种解决数据倾斜的方式针对的是**Task级别的数据倾斜**，主要是将同一个executor内的倾斜task进行拆分，而**对于数据全集中在个别executor内的情况就无济于事了**。
+
+
+
+### Spark DPP
+
+DPP（Dynamic Partition Pruning，动态分区剪裁）指的是在大表Join小表的场景中，可以充分利用过滤之后的小表，在运行时动态的来大幅削减大表的数据扫描量，从整体上提升关联计算的执行性能。
+
+Spark SQL 对分区表做扫描的时候，是完全可以跳过（剪掉）不满足谓词条件的分区目录，这就是分区剪裁。
+
+```sql
+SELECT t1.id, t2.part_column FROM table1 t1
+ JOIN table2 t2 ON t1.part_column = t2.part_column
+ WHERE t2.id < 5
+```
+
+没有开启DPP的情况下，执行上述语句需要扫描完整的t1表，这是因为t2.id < 5只是对小表进行了过滤
+
+在Join关系 t1.part_column = t2.part_column的作用下，过滤效果会通过 小表t2.part_column 字段传导到大表的 t1.part_column字段。这样一来，传导后的t1.part_column值，就是大表 part_column 全集中的一个子集。把满足条件的 t1.part_column作为过滤条件，应用到大表的数据源，就可以做到减少数据扫描量，提升 I/O 效率。
+
+
+
+- DPP 是一种分区剪裁机制，它是以分区为单位对大表进行过滤，所以说**大表必须是分区表，而且分区字段**（可以是多个）必须包含 Join Key。
+- 过滤效果的传导，依赖的是等值的关联关系，比如 t1.part_column = t2.part_column。因此，**DPP 仅支持等值 Joins**。
+- 执行动态分区过滤**必须是收益的**，DPP 优化机制才能生效。假设Join的右侧表有 10MB 的数据，并且过滤器比率是默认值（0.5）。对于该配置，如果Join的左侧大于 20MB，则使用 DPP 将被视为有益。当然当CBO的统计信息可以用时，会使用统计信息计算过滤比。
+- 小表存在过滤谓词；
+
+
+
+### Spark RuntimeFilter
+
+与dpp类似，是dpp的补充，不强制要求是分区字段
+
+两种策略： **BloomFilter**和**Semi-Join**
+
+BloomFilter有假阳性的问题，另外如果数据量比较大其结果可能会出现判断错误的情况
+
+bloomFilter需要小表满足其sizeInBytes小于阈值（默认10M）
+
+semi-join Filter需要满足小表join keys聚合后可以广播
+
+Spark的runtimeFilter, 在Plan的转换中会存在冗余计算的问题，小表存在两次扫描和过滤的问题
+
+
+
+### Spark ESS PBS RSS
+
+**ESS  external shuffle service**
+
+spark提供了external shuffle service这个接口，常见的就是spark on yarn中的，YarnShuffleService
+
+在yarn的***nodemanager中会常驻一个externalShuffleService***服务进程来为所有的executor服务
+
+- 即使 Spark Executor 正在经历 GC 停顿，Spark ESS 也可以为 Shuffle 块提供服
+- 即使产生它们的 Spark Executor 挂了，Shuffle 块也能提供服务
+- 可以释放闲置的 Spark Executor 来节省集群的计算资源
+
+
+
+**PBS Push-based shuffle**
+
+在Spark3.2中引入了领英设计的一种新的shuffle方案(Magnet)
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1718900143-15872b.webp)
+
+***ESS问题***：
+
+- Spark ESS 每个 FETCH 请求只会读取一个 Shuffle 块，因此Shuffle 块的平均大小决定了每次盘读的平均数据量，如果存在大量小 Shuffle 块导致磁盘 I/O 低效
+- Reduce 任务在建立与远程 Spark ESS 的连接时出现失败的情况，它会立即失败整个的 Shuffle Reduce Stage
+
+***PBS特性***
+
+- Magnet采用 Push-Merge Shuffle 机制，其中 Mapper 生成的 Shuffle 数据被推送到远程的 Magnet Shuffle Service，从而实现每个 shuffle 分区都能被合并。**这允许Magnet将小的 Shuffle 块的随机读取转化成 MB 大小块的顺序读取**。此外，**此推送操作与 Mapper 分离**，这样的话，如果操作失败，也不会增加 Map Task 的运行时间或者导致 Map Task 失败。
+- Magnet 通过在顶层构建的方式集成了 Spark 原生的 shuffle。这使得Magnet可以部署在具有相同位置的计算和存储节点的 on-prem 集群中与disaggrecated存储层的cloud-based的集群中。在前一种情况下，**随着每次 Reduce Task 的大部分都合并在一个位置，Magnet利用这种本地性来调度 Reduce Task 并实现更好的 Reducer 数据本地性**。在后一种情况下，代替数据本地性，Magnet可以选择较少负载的远程 shuffle 服务，从而更好的优化了负载均衡。
+
+
+
+**RSS remote shuffle service**
+
+依赖于外部组件实现
+
+
+
+
+
+### Spark 投影和谓词下推
+
+谓词下推是指将过滤条件（谓词）应用于查询的尽可能早的阶段，以减少需要处理的数据量。
+具体而言，当Spark执行查询时，它会尝试将过滤条件应用于数据源本身，而不是将整个数据集加载到内存中后再进行筛选。这样可以避免对不符合条件的数据进行处理，节省了计算资源和时间。
+
+投影下推是指将查询中不需要的列从数据源中过滤掉，只加载查询需要的列。通过减少所需的列数量，可以减少磁盘IO和网络传输的数据量，提高查询性能。（Project节点）
+
+
+
+### Spark Tungsten
+
+提升Spark应用程序的**内存和CPU**利用率
+
+1. Memory Management and Binary Processing: application显示的对内存进行高效的管理以消除JVM对象模型和垃圾回收的开销；
+
+   1. 堆外内存，unsafe api。4字节的字符串在jvm需要48字节的空间来存储
+
+2. Cache-aware computation：设计算法和数据结构以充分利用memory hierarchy
+
+   1. 基于顺序扫描的特性，排序通常能获得一个不错的缓存命中率。 然而，排序一组指针的缓存命中率却很低，因为每个比较运算都需要对两个指针解引用，而这两个指针对应的却是内存中两个**随机位置的数据**。
+   2. 如何提高排序中的缓存本地性？一个方法就是通过指针顺序地储存每个记录的sort key 。举个例子，如果sort key是一个64位的整型，那么我们需要在指针阵列中使用128位（64位指针，64位sort key）来储存每条记录。这个途径下，每个quicksort对比操作只需要线性的查找每对pointer-key，从而不会产生任何的随机扫描。
+
+   ![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1718903808-7be553.jpg)
+
+3. Code generation：使用code generation去充分利用最新的编译器和CPUs的性能
+
+   1. Spark在SQL和DataFrame上引入了表达式求值的代码生成技术。表达式求值是在特定记录上计算表达式值的过程（比如"age > 10 and age < 20"），在运行时，Spark会动态生成字节码来计算这些表达式，而不是低效的解释执行每行记录。代码生成相比一行行的解释执行可以减少对基本数据类型的装箱操作，更重要的是，可以避免多态函数的调用  (JIT)
+   2. 消除虚函数调度（多态）
+   3. 将中间数据从内存移动到 CPU 寄存器
+   4. 利用现代 CPU 功能循环展开和使用 SIMD。通过向量化技术，引擎将加快对复杂操作代码生成运行的速度。
 
 
 
