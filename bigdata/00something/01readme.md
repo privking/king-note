@@ -142,7 +142,9 @@ set hive.optimize.sort.dynamic.partition=true; -- 类似于impala /* +NOCLUSTERE
 When enabled, dynamic partitioning column will be globally sorted.
 This way we can keep only one record writer open for each partition value in the reducer thereby reducing the memory pressure on reducers.
 
-这个参数可以使得每个分区只产生一个文件，但会降低reduce处理并写入一个分区的速度。
+这个参数可以使得每个reducer在每个分区只有一个writer，但会降低reduce处理并写入一个分区的速度。
+
+
 
 
 
@@ -211,7 +213,7 @@ Partitioner 的默认实现：hash(key) mod R，这里的R代表Reduce Task 的�
 
 **distribute by**：控制在map端如何拆分数据给reduce端的，确保具有相同键的记录会进入相同的Reducer，通常配合sort by使用。`distribute by rand()` 可以防止数据倾斜
 
-**cluster by**：将相同hash值数据放在一起 ，可以提高查询速度
+**cluster by**：将相同hash值数据放在一起 ，可以提高查询速度。当distribute by 和 sort by 所指定的字段相同时，相当于cluster by
 
 
 
@@ -285,7 +287,7 @@ n preceding  前面n行
 rows表示 行，就是前n行，后n行
 
 而range表示的是 具体的值，比这个值小n的行，比这个值大n的行
-ange between 4 preceding AND 7 following
+range between 4 preceding AND 7 following
 ```
 
 
@@ -696,7 +698,7 @@ merge阶段：归并排序
 - parition
 - Value length
 
-**图解shuffle**  [url](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1709826165-19a3bd.gif)
+**图解shuffle**  [url](https://raw.githubuswercontent.com/privking/king-note-images/master/img/note/1709826165-19a3bd.gif)
 
 ![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1709826165-19a3bd.gif)
 
@@ -1892,6 +1894,14 @@ SELECT name FROM person WHERE id > 10 and age > 20
 
 
 
+### Parquet 文件格式
+
+- 行组(Row Group)：按照行将数据物理上划分为多个单元，每一个行组包含一定的行数，在一个HDFS文件中至少存储一个行组，Parquet读写的时候会将整个行组缓存在内存中，所以如果每一个行组的大小是由内存大的小决定的，例如记录占用空间比较小的Schema可以在每一个行组中存储更多的行。
+- 列块(Column Chunk)：在一个行组中每一列保存在一个列块中，行组中的所有列连续的存储在这个行组文件中。一个列块中的值都是相同类型的，不同的列块可能使用不同的算法进行压缩。
+- 页(Page)：每一个列块划分为多个页，一个页是最小的编码的单位，在同一个列块的不同页可能使用不同的编码方式。
+
+![img](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1725367123-7445c4.png)
+
 
 
 ## YARN
@@ -2048,8 +2058,7 @@ ContainerExecutor可与底层操作系统交互， 安全存放Container需要�
 
 **DefaultContainerExecuter** 类提供通用的container执行服务. 负责启动Container . 是默认实现， 未提供任何权安全措施， 它以NodeManager启动者的身份启动和停止Container
 
-**LinuxContainerExecutor**的核心设计思想是， **赋予NodeManager启动者以root权限**， 进而使它拥有足够的权限以任意用户身份执行一些操作， 从而使得NodeManager执行者可以将**Container使用的目录和文件的拥有者修改为应用程序提交者**， 并以应用程序提交者的身
-份运行Container， 防止所有Container以NodeManager执行者身份运行进而带来的各种安全风险。 比如防止用户在Container中执行一些只有NodeManager用户有权限执行的命令（杀死其他应用程序的命令、 关闭或者杀死NodeManager进程等） 。
+**LinuxContainerExecutor**的核心设计思想是， **赋予NodeManager启动者以root权限**， 进而使它拥有足够的权限以任意用户身份执行一些操作， 从而使得NodeManager执行者可以将**Container使用的目录和文件的拥有者修改为应用程序提交者**， 并以应用程序提交者的身份运行Container， 防止所有Container以NodeManager执行者身份运行进而带来的各种安全风险。 比如防止用户在Container中执行一些只有NodeManager用户有权限执行的命令（杀死其他应用程序的命令、 关闭或者杀死NodeManager进程等） 。
 为了实现上述机制， NodeManager采用C语言实现了一个具有setuid功能的工具—container-executor， 它拥有root权限， 可以完成任意操作， 比如**创建Cgroups层级树、 设置Cgroups属性**（资源隔离）等。 LinuxContainerExecutor通过调用这个可执行文件可以修改Container的一些属性以限制Container的非法操作（比如关闭NodeManager、 杀死NodeManager等） 
 
 
@@ -3074,7 +3083,7 @@ AQE 是 Spark SQL 的一种动态优化机制，**在运行时，每当 Shuffle 
 
 ***Join 策略调整***：如果某张表在过滤之后，尺寸小于广播变量阈值，这张表参与的数据关联就会从 Shuffle Sort Merge Join 降级（Demote）为执行效率更高的 Broadcast Hash Join。
 
-有两个优化规则，一个逻辑规则和一个物理策略分别是：`DemoteBroadcastHashJoin 和 OptimizeLocalShuffleReade`
+有两个优化规则，一个逻辑规则和一个物理策略分别是：`DemoteBroadcastHashJoin 和 OptimizeLocalShuffleReader`
 
 DemoteBroadcastHashJoin 判断中间文件是否满足广播条件，降级join策略
 
@@ -3116,12 +3125,29 @@ SELECT t1.id, t2.part_column FROM table1 t1
 
 在Join关系 t1.part_column = t2.part_column的作用下，过滤效果会通过 小表t2.part_column 字段传导到大表的 t1.part_column字段。这样一来，传导后的t1.part_column值，就是大表 part_column 全集中的一个子集。把满足条件的 t1.part_column作为过滤条件，应用到大表的数据源，就可以做到减少数据扫描量，提升 I/O 效率。
 
+```shell
+spark.sql.optimizer.dynamicPartitionPruning.enabled=true;  # 其默认值就是true, spark3 默认是开启DPP的
+spark.sql.optimizer.dynamicPartitionPruning.reuseBroadcastOnly=true; # 默认是true,这时只会在动态修剪过滤器中重用BroadcastExchange时，才会应用 DPP，如果设置为false可以在非Broadcast场景应用DPP。
+spark.sql.optimizer.dynamicPartitionPruning.useStats=true; # 如果为true，则将使用不同计数统计信息来计算动态分区修剪后分区表的数据大小，以评估在广播重用不适用的情况下是否值得添加额外的子查询作为修剪过滤器。
+spark.sql.optimizer.dynamicPartitionPruning.fallbackFilterRatio=0.5; # 当统计信息不可用或配置为不使用时，此配置将用作回退过滤器比率，用于计算动态分区修剪后分区表的数据大小，以评估在广播重用不适用的情况下是否值得添加额外的子查询作为修剪过滤器
+```
 
 
-- DPP 是一种分区剪裁机制，它是以分区为单位对大表进行过滤，所以说**大表必须是分区表，而且分区字段**（可以是多个）必须包含 Join Key。
-- 过滤效果的传导，依赖的是等值的关联关系，比如 t1.part_column = t2.part_column。因此，**DPP 仅支持等值 Joins**。
-- 执行动态分区过滤**必须是收益的**，DPP 优化机制才能生效。假设Join的右侧表有 10MB 的数据，并且过滤器比率是默认值（0.5）。对于该配置，如果Join的左侧大于 20MB，则使用 DPP 将被视为有益。当然当CBO的统计信息可以用时，会使用统计信息计算过滤比。
-- 小表存在过滤谓词；
+
+- 大表必须是**分区表**，并且分区字段必须**包含 Join Key**；
+- 只支持**等值 Joins**，不支持大于、小于这种不等值关联关系；
+- **小表存在过滤谓词**；
+- 执行动态分区过滤必须是收益的，简单来说大表在乘以过滤比后其大小仍要大于小表。
+
+
+
+**分区过滤的实现是在逻辑计划的Optimizer阶段，通过注入PartitionPruning规则，将满足条件的待剪裁侧plan中插入自定义了被包装为正则In表达式的DynamicRunning表达式。在物理计划的preparations阶段，调用PlanDynamicPruningFilters规则，根据是否可以重用broadcast，和是否只支持broadcast来区分执行实现，**具体为：
+
+1. 如果当前开启了exchangeReuseEnabled，同时Plan中存在BroadcastHashJoinExec，则会重用当前的BroadcastExchangeExec，并将其封装为一个InSubqueryExec，在包装为DynamicPruningExpression表达式。
+2. 如果onlyInBroadcast为false, 表明要么是reuseBroadcastOnly设为false（即非broadcast exchange时也可使用）, 要么是有收益。则先按照需要过滤的key做一次聚合, 然后将其封装为一个InSubqueryExec，再包装为DynamicPruningExpression表达式。
+3. 否则，不会执行Query, 执行回退
+
+
 
 
 
@@ -3187,6 +3213,50 @@ spark提供了external shuffle service这个接口，常见的就是spark on yar
 具体而言，当Spark执行查询时，它会尝试将过滤条件应用于数据源本身，而不是将整个数据集加载到内存中后再进行筛选。这样可以避免对不符合条件的数据进行处理，节省了计算资源和时间。
 
 投影下推是指将查询中不需要的列从数据源中过滤掉，只加载查询需要的列。通过减少所需的列数量，可以减少磁盘IO和网络传输的数据量，提高查询性能。（Project节点）
+
+
+
+### Spark广播原理
+
+**创建**：
+
+广播变量的创建发生在Driver端，当调用SparkContext#broadcast来创建广播变量时，会把该变量的数据切分成多个数据块，保存到driver端的BlockManger中，使用的存储级别是：**MEMORY_AND_DISK_SER**。
+
+所以，广播变量的读取也是懒加载的，**只有在Executor端需要获取广播变量时才会去获取。初始化时广播变量的数据只在Driver端存在。**
+
+
+
+**读取：**
+
+首先从Executor本地的BlockManager中读取广播变量的数据，若存在就直接获取，并返回
+
+从Driver端获取广播变量的状态和位置信息（由于所有的BlockManager slave端都会向Master端汇报数据块状态）
+
+优先从本地目录（数据块就在本地），或者相同主机的其他Executor中读取广播变量数据块。若在本Executor和同主机其他Executor中都不存在，则只能从远端获取数据。从远端获取数据的原则是：先从同一个机架(rack)的主机的Executor端获取。若不能从其他Executor中获取广播变量，则会直接从Driver端获取。
+
+**只要有一个worker节点的Executor从Driver端获取到了广播变量的数据，则其他的Executor就不需要从Driver端获取了。**
+
+
+
+**销毁：**
+
+从driver端发送一个RemoveBroadcast消息。在Executor上的BlockManager服务接收该消息，就会把广播变量从BlockManager中删除。
+
+若removeFromDriver设置成True，还会从Driver删除该变量的数据。
+
+
+
+### Spark Accumulator
+
+Accumulator是Spark中的一种分布式变量，用于在并行计算中进行累加操作。它是由MapReduce模型中的“全局计数器”概念演化而来的。
+
+Accumulator提供了一个可写的分布式变量，可以在并行计算中进行累加操作。在Spark中，当一个任务对Accumulator进行累加操作时，这个操作会被序列化并发送到执行任务的节点上进行执行。然后，Spark会将所有节点上的结果合并起来，最终得到Accumulator的最终值。
+
+Accumulator的使用场景包括但不限于：
+
+- 在并行计算中进行全局计数或求和操作；
+- 在迭代算法中进行迭代过程中的统计操作；
+- 在分布式机器学习中进行模型参数的更新。
 
 
 
