@@ -3822,11 +3822,116 @@ Hadoop架构相当于将所有机器的存储资源与计算资源抽象出来�
 
 
 
-pipeline
+## Flink
+
+### Flink Zookeeper 高可用
+
+1. Application Master：`YarnApplicationClusterEntryPoint`
+
+```java
+// 参数 yarnApplicationClusterEntrypoint 为 YarnSessionClusterEntrypoint
+ClusterEntrypoint.runClusterEntrypoint(yarnApplicationClusterEntrypoint);
+
+// clusterEntrypoint 为参数yarnApplicationClusterEntrypoint 即 YarnSessionClusterEntrypoint
+clusterEntrypoint.startCluster();
+
+//ClusterEntrypoint的方法
+runCluster();
+
+//ClusterEntrypoint的方法
+initializeServices();
+
+//ClusterEntrypoint的方法
+//返回值是 HighAvailabilityServices实现类
+haServices = createHaServices();
+
+HighAvailabilityServicesUtils.createHighAvailabilityServices();
+
+//判断是zookeeper调用下面方法
+createZooKeeperHaServices(configuration, executor, fatalErrorHandler);
+
+//创建并CuratorFramework 并调用CuratorFramework.start
+//Apache Curator 可以更容易的使用ZooKeeper,并且对leader选举等做了封装
+// 然后将Curator作为作为构造器参数 创建ZooKeeperLeaderElectionHaServices实例并返回
+
+public ZooKeeperLeaderElectionHaServices(
+        CuratorFrameworkWithUnhandledErrorListener curatorFrameworkWrapper,
+        Configuration configuration,
+        Executor executor,
+        BlobStoreService blobStoreService)
+        throws Exception {
+    super(
+            configuration,
+            new ZooKeeperLeaderElectionDriverFactory(
+                    ZooKeeperUtils.useNamespaceAndEnsurePath(
+                            curatorFrameworkWrapper.asCuratorFramework(),
+                            ZooKeeperUtils.getLeaderPath())),   // leaderPath -->  leader
+            executor,
+            blobStoreService,
+            FileSystemJobResultStore.fromConfiguration(configuration, executor));
+    this.curatorFrameworkWrapper = checkNotNull(curatorFrameworkWrapper);
+}
 
 
+// 父类构造器方法
+protected AbstractHaServices(
+        Configuration config,
+        LeaderElectionDriverFactory driverFactory,
+        Executor ioExecutor,
+        BlobStoreService blobStoreService,
+        JobResultStore jobResultStore) {
 
-Redis  
+    this.configuration = checkNotNull(config);
+    this.ioExecutor = checkNotNull(ioExecutor);
+    this.blobStoreService = checkNotNull(blobStoreService);
+    this.jobResultStore = checkNotNull(jobResultStore);
+
+    this.leaderElectionService = new DefaultLeaderElectionService(driverFactory);
+}
+
+//ZooKeeperLeaderElectionDriverFactory创建ZooKeeperLeaderElectionDriver
+ZooKeeperLeaderElectionDriver implements LeaderElectionDriver, LeaderLatchListener
+  
+//curator接口
+LeaderLatchListener
+  	//调用leaderElectionListener.onGrantLeadership(leaderSessionID);   LeaderElectionDriver.Listener
+    void isLeader();
+    //调用leaderElectionListener.onRevokeLeadership();
+    void notLeader();
+
+
+//由上面构造器可以看出 leaderElectionService  leader选举服务 实现类DefaultLeaderElectionService
+
+public class DefaultLeaderElectionService extends DefaultLeaderElection.ParentService
+        implements LeaderElectionService, LeaderElectionDriver.Listener, AutoCloseable 
+
+DefaultLeaderElection.ParentService
+  //如果判断leaderElectionDriver是空值 leaderElectionDriver = leaderElectionDriverFactory.create(this);
+  //放到map里面 leaderContenderRegistry.put(componentId, contender)
+  //如果当前是leader ,调用leaderContenderRegistry.get(componentId).grantLeadership(issuedLeaderSessionID);
+  abstract void register(String componentId, LeaderContender contender) throws Exception; //注册竞选者
+	//leaderContenderRegistry.remove(componentId);
+	//如果当前是leader ,调用contender.revokeLeadership();
+	abstract void remove(String componentId) throws Exception;//移除竞选者
+	abstract void confirmLeadership(String componentId, UUID leaderSessionID, String leaderAddress);
+	abstract boolean hasLeadership(String componentId, UUID leaderSessionID);
+
+
+LeaderElectionService
+  //返回DefaultLeaderElection
+  LeaderElection createLeaderElection(String componentId);
+
+
+LeaderElectionDriver.Listener
+  // leaderContenderRegistry.get(componentId).grantLeadership(issuedLeaderSessionID);
+  // 调用所有竞选者的grantLeadership
+  void onGrantLeadership(UUID leaderSessionID);
+	// 调用所有竞选者的contender.revokeLeadership();
+	void onRevokeLeadership();
+  void onLeaderInformationChange(String componentId, LeaderInformation leaderInformation);
+  void onLeaderInformationChange(LeaderInformationRegister leaderInformationRegister);
+	void onError(Throwable t);
+```
 
 
 
