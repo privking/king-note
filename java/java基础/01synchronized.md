@@ -45,9 +45,9 @@ public class ThreadDemo {
 ### jstack pid
 ![1585836098(1)](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1585836098-1--1599154113-2821f3.png)
 ### javap -v ThreadDemo.class
-- 对象锁
+- 代码块
 ![1585836427(1)](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/1585836427-1--1599154160-6b895c.png)
-- 类锁
+- 方法
 ![clipboard](https://raw.githubusercontent.com/privking/king-note-images/master/img/note/clipboard-1599154183-00991e.png)
 
 ## 使用synchronized注意的问题
