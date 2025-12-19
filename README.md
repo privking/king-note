@@ -1,5 +1,3 @@
-#Lambda Note
+# Lambda Note
 
-
-
-no thing
+no thing to show
