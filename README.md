@@ -1,4 +1,5 @@
-#king-note
+#Lambda Note
 
-hello world
-笔记 king-note
+
+
+no thing
