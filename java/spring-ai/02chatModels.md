@@ -86,6 +86,153 @@ public enum MessageType {
 
 
 
+### PromptTemplate
+
+生成Prompt的模版
+
+```java
+//PromptTemplateActions 继承自 PromptTemplateStringActions
+public interface PromptTemplateActions extends PromptTemplateStringActions {
+  Prompt create();
+
+  Prompt create(ChatOptions modelOptions);
+
+  Prompt create(Map<String, Object> model);
+
+  Prompt create(Map<String, Object> model, ChatOptions modelOptions);
+}
+public interface PromptTemplateStringActions {
+  String render();
+
+  String render(Map<String, Object> model);
+}
+
+public interface PromptTemplateMessageActions {
+  Message createMessage();
+
+  Message createMessage(List<Media> mediaList);
+
+  Message createMessage(Map<String, Object> model);
+}
+
+
+// 用户提示词 的 模版
+public class PromptTemplate implements PromptTemplateActions, PromptTemplateMessageActions {
+  // 默认的TemplateRenderer,StTemplateRenderer
+  private static final TemplateRenderer DEFAULT_TEMPLATE_RENDERER = StTemplateRenderer.builder().build();
+
+  // 参数是Resource的 构造器 (模版文件的resource)
+  public PromptTemplate(Resource resource) {}
+
+  // 参数是模版的 构造器
+  public PromptTemplate(String template) {
+    this((String)template, new HashMap(), DEFAULT_TEMPLATE_RENDERER);
+  }
+  // 参数有模版，模版参数，renderer 的构造器
+  PromptTemplate(String template, Map<String, Object> variables, TemplateRenderer renderer) {
+  }
+  // 参数有模版文件Resource，模版参数，renderer的构造器
+  PromptTemplate(Resource resource, Map<String, Object> variables, TemplateRenderer renderer) {
+  }
+  //添加模版参数
+  public void add(String name, Object value) { 
+  }
+
+  public String getTemplate() {
+  }
+
+  //渲染成 字符串
+  public String render() {
+  }
+  //渲染成 字符串
+  public String render(Map<String, Object> additionalVariables) {
+  }
+  //渲染为Message
+  public Message createMessage() {
+  }
+  //渲染为Message
+  public Message createMessage(List<Media> mediaList) {
+  }
+  //渲染为Message
+  public Message createMessage(Map<String, Object> additionalVariables) {
+
+  }
+  //渲染为Prompt
+  public Prompt create() {
+
+  }
+  //渲染为Prompt
+  public Prompt create(ChatOptions modelOptions) {
+  }
+  //渲染为Prompt
+  public Prompt create(Map<String, Object> additionalVariables) {
+  }
+  //渲染为Prompt
+  public Prompt create(Map<String, Object> additionalVariables, ChatOptions modelOptions) {
+  }
+  //copy一个新的
+  public Builder mutate() {
+  }
+
+  // ... builder
+}
+
+
+// 系统提示词的模版
+public class SystemPromptTemplate extends PromptTemplate {
+
+}
+```
+
+**demo**
+
+```java
+PromptTemplate promptTemplate = PromptTemplate.builder()
+    .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
+    .template("""
+            Tell me the names of 5 movies whose soundtrack was composed by <composer>.
+            """)
+    .build();
+
+String prompt = promptTemplate.render(Map.of("composer", "John Williams"));
+              
+              
+/////////////////////////
+              
+PromptTemplate promptTemplate = new PromptTemplate("Tell me a {adjective} joke about {topic}");
+
+Prompt prompt = promptTemplate.create(Map.of("adjective", adjective, "topic", topic));
+
+return chatModel.call(prompt).getResult();
+              
+              
+/////////////////////////
+              
+String userText = """
+    Tell me about three famous pirates from the Golden Age of Piracy and why they did.
+    Write at least a sentence for each pirate.
+    """;
+
+Message userMessage = new UserMessage(userText);
+
+String systemText = """
+  You are a helpful AI assistant that helps people find information.
+  Your name is {name}
+  You should reply to the user's request with your name and also in the style of a {voice}.
+  """;
+
+SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemText);
+Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", name, "voice", voice));
+
+Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
+
+List<Generation> response = chatModel.call(prompt).getResults();
+```
+
+
+
+
+
 ###  Chat Options
 
 用于定义一些可以传递给AI模型的可移植选项
@@ -95,15 +242,15 @@ public enum MessageType {
 ```java
 public interface ChatOptions extends ModelOptions {
 
-	String getModel();
-	Float getFrequencyPenalty();
-	Integer getMaxTokens();
-	Float getPresencePenalty();
-	List<String> getStopSequences();
-	Float getTemperature();
-	Integer getTopK();
-	Float getTopP();
-	ChatOptions copy();
+  String getModel();
+  Float getFrequencyPenalty();
+  Integer getMaxTokens();
+  Float getPresencePenalty();
+  List<String> getStopSequences();
+  Float getTemperature();
+  Integer getTopK();
+  Float getTopP();
+  ChatOptions copy();
 
 }
 ```
@@ -246,6 +393,7 @@ public class OllamaChatOptions implements ToolCallingChatOptions {
 }
 
 ```
+
 
 
 
