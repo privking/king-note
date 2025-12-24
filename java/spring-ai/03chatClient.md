@@ -21,8 +21,8 @@ public void testChatClientBuilder(@Autowired ChatClient.Builder builder) {
 
 **通过chatModel创建**
 
-> [!NOTE]
->
+> [!NOTE] 
+> 
 > 可以适配多模型场景
 
 ```java
@@ -65,4 +65,44 @@ public void testPrompt3(@Autowired OllamaChatModel ollamaChatModel) {
   System.out.println(content);
 }
 ```
+
+
+
+> [!NOTE]
+>
+> test1
+
+aaa
+
+
+
+> [!TIP]
+>
+> test2
+
+
+
+bbb
+
+> [!IMPORTANT]
+>
+> test3
+
+ccc
+
+> [!WARNING]
+>
+> test4
+
+ddd
+
+
+
+> [!CAUTION]
+>
+> test5
+>
+> acdcdc
+
+End
 
