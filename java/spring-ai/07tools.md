@@ -284,3 +284,131 @@ ToolExecutionExceptionProcessor toolExecutionExceptionProcessor() {
 >
 > 如果定义了自己的ToolCallback实现，请确保在call()方法中作为工具执行逻辑的一部分发生错误时抛出ToolExecutionException。
 
+
+
+
+
+## 捕获LLM工具调用推理
+
+```java
+import org.springframework.ai.tool.annotation.ToolParam;
+
+public record AgentThinking(
+    @ToolParam(description = "Your step-by-step reasoning for why you're calling this tool and what you expect", required = true) 
+    String innerThought,
+    
+    @ToolParam(description = "Confidence level (low, medium, high) in this tool choice", required = false) 
+    String confidence,
+    
+    @ToolParam(description = "Key insights to remember for future interactions", required = true) 
+    List<String> memoryNotes
+) {}
+
+////////////////////////////////////////////
+
+import org.springframework.ai.tool.augment.AugmentedToolCallbackProvider;
+
+// Your existing tool defined using Spring AI @Tool annotation
+public class WeatherTool {
+    @Tool(description = "Get the current weather for a given location")
+    public String weather(String location) {
+        return "The current weather in " + location + " is sunny with a temperature of 25°C.";
+    }
+}
+
+// Wrap with augmented arguments
+AugmentedToolCallbackProvider<AgentThinking> provider = 
+    AugmentedToolCallbackProvider.<AgentThinking>builder()
+        .toolObject(new WeatherTool())
+        .argumentType(AgentThinking.class)
+        .argumentConsumer(event -> {
+            // Access the augmented arguments via event.arguments()
+            AgentThinking thinking = event.arguments();
+            
+            // Log the LLM's reasoning - great for debugging and observability
+            log.info("Tool: {}, LLM Reasoning: {}, Confidence: {}",
+               event.toolDefinition().name(), thinking.innerThought(), thinking.confidence());
+                        
+            // Store insights in memory for future context
+            thinking.memoryNotes().forEach(note -> 
+                memorySystem.store(note)
+            );
+        })
+        .build();
+
+// Use with Spring AI ChatClient
+ChatClient chatClient = ChatClient.builder(chatModel)
+    .defaultToolCallbacks(provider)
+    .build();
+
+```
+
+
+
+#### What the LLM Sees
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "The location to get weather for"
+    },
+    "innerThought": {
+      "type": "string",
+      "description": "Your step-by-step reasoning for why you're calling this tool and what you expect"
+    },
+    "confidence": {
+      "type": "string",
+      "description": "Confidence level (low, medium, high) in this tool choice"
+    },
+    "memoryNotes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key insights to remember for future interactions"
+    }
+  },
+  "required": ["location", "innerThought", "memoryNotes"]
+}
+```
+
+
+
+#### LLM Response with Reasoning
+
+```json
+{
+  "location": "Amsterdam",
+  "innerThought": "The user is asking about what to wear in Amsterdam today. I need to check the current weather conditions to provide appropriate clothing recommendations.",
+  "confidence": "high",
+  "memoryNotes": [
+    "User is planning an outing in Amsterdam",
+    "May need follow-up with specific activity questions"
+  ]
+}
+```
+
+Your consumer receives the `AgentThinking` record with all the reasoning, while the original tool receives only `{"location": "Amsterdam"}`.
+
+#### 
+
+#### Include Reasoning in Final Response(Optional)
+
+```java
+public record ResponseWithReasoning(
+    String response, 
+    AgentThinking thinking
+) {}
+
+var answer = chatClient
+    .prompt("What should I wear in Amsterdam today?")
+    .call()
+    .entity(ResponseWithReasoning.class); // structured response
+
+// Access both the response and the reasoning
+System.out.println("Answer: " + answer.response());
+System.out.println("Reasoning: " + answer.thinking().innerThought());
+
+```
+
