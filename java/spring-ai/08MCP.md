@@ -155,7 +155,7 @@ spring:
 
 - **@McpLogging** - MCP server 返回的日志
 - **@McpSampling** - 处理MCP server 对 大模型的请求
-- **@McpElicitation** - 调用MCP 携带额外参数
+- **@McpElicitation** - 调用MCP前, 追问/向用户补充信息
 - **@McpProgress** - MCP处理进度
 - **@McpToolListChanged** - Handles notifications when the server’s tool list changes
 - **@McpResourceListChanged** - Handles notifications when the server’s resource list changes
