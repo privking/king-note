@@ -599,7 +599,7 @@ systemctl enable sing-box
         "type": "ws",
         "path": "/xxxxx",
         "headers": {
-          "host": "node01.ccwu.cc"
+          "host": "xxxx"
         },
         "early_data_header_name": "Sec-WebSocket-Protocol"
       },
@@ -683,6 +683,308 @@ service sing-box start
 
 
 
+```json
+{
+  "log": {
+    "level": "debug",
+    "output": "/root/soft/sing-box/log/sing-box.log",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "tcp",
+        "tag": "cn-dns",
+        "server": "223.5.5.5",
+        "server_port": 53,
+        "detour": "direct-out"
+      },
+      {
+        "type": "tcp",
+        "tag": "trojan-dns",
+        "server": "8.8.8.8",
+        "server_port": 53,
+        "detour": "trojan-out"
+      }
+    ],
+    "rules": [
+      {
+        "server": "cn-dns",
+        "rule_set": [
+          "geosite-cn",
+          "geosite-cn2"
+        ],
+        "domain_keyword": [
+          "jiajun",
+          "apple",
+          "weixin",
+          "tencent",
+          "qq",
+          "icloud",
+          "miwifi"
+        ]
+      },
+      {
+        "server": "trojan-dns"
+      }
+    ],
+    "final": "trojan-dns",
+    "reverse_mapping": true,
+    "optimistic": {
+        "enabled": true,
+        "timeout": "1d"
+    },
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.18.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "auto_route": true,
+      "mtu": 1280,
+      "route_address": [
+        "0.0.0.0/1",
+        "128.0.0.0/1",
+        "::/1",
+        "8000::/1"
+      ],
+      "auto_redirect": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct-out",
+      "domain_resolver": "cn-dns"
+    },
+    {
+      "type": "trojan",
+      "tag": "trojan-out",
+      "server": "xxxx",
+      "server_port": 443,
+      "password": "xxxx",
+      "transport": {
+        "type": "ws",
+        "path": "/xxxx",
+        "headers": {
+          "host": "xxxx"
+        }
+      },
+      "tls": {
+        "enabled": true
+      },
+      "multiplex": {
+        "enabled": false,
+        "protocol": "smux",
+        "max_connections": 16,
+        "min_streams": 8,
+        "padding": false
+      },
+      "domain_resolver": "cn-dns"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "outbound": "direct-out",
+        "network": [
+          "icmp"
+        ],
+        "rule_set": [
+          "geoip-cn","geoip-cn2"
+        ]
+      },
+      {
+        "network": [
+          "icmp"
+        ],
+        "action": "reject",
+        "method": "reply"
+      },
+      {
+        "action": "sniff"
+      },
+      {
+        "port": [
+          53,853
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "outbound": "direct-out",
+        "ip_cidr": [
+          "192.168.0.0/16",
+          "127.0.0.1"
+        ]
+      },
+      {
+        "action": "route-options",
+        "udp_connect": true,
+        "ip_cidr": [
+          "100.64.0.0/10"
+        ]
+      },
+      {
+        "outbound": "tailscale",
+        "ip_cidr": [
+          "100.64.0.0/10"
+        ]
+      },
+      {
+        "outbound": "direct-out",
+        "domain_keyword": [
+          "jiajun",
+          "apple",
+          "weixin",
+          "tencent",
+          "qq",
+          "icloud",
+          "miwifi"
+        ]
+      },
+      {
+        "action": "route-options",
+        "udp_connect": true,
+        "domain_keyword": [
+          "gstatic",
+          "google",
+          "gvt2"
+        ]
+      },
+      {
+        "outbound": "trojan-out",
+        "domain_keyword": [
+          "gstatic",
+          "google",
+          "gvt2"
+        ]
+      },
+      {
+        "outbound": "direct-out",
+        "rule_set": [
+          "geosite-cn",
+          "geosite-cn2"
+        ]
+      },
+      {
+        "action": "route-options",
+        "udp_connect": true,
+        "rule_set": ["geoip-cn","geoip-cn2"],
+        "invert": true
+      },
+      {
+        "outbound": "trojan-out",
+        "rule_set": ["geoip-cn","geoip-cn2"],
+        "invert": true
+      },
+      {
+        "outbound": "direct-out",
+        "ip_cidr": [
+          "0.0.0.0/1",
+          "128.0.0.0/1",
+          "::/1",
+          "8000::/1"
+        ]
+      }
+    ],
+    "auto_detect_interface": true,
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs",
+        "update_interval": "1d",
+        "http_client": "http-client"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs",
+        "update_interval": "1d",
+        "http_client": "http-client"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-cn2",
+        "format": "binary",
+        "url": "https://github.com/DustinWin/ruleset_geodata/releases/download/sing-box-ruleset/cn.srs",
+        "update_interval": "1d",
+        "http_client": "http-client"
+      },
+        {
+        "type": "remote",
+        "tag": "geoip-cn2",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/Loyalsoldier/geoip/release/srs/cn.srs",
+        "update_interval": "1d",
+        "http_client": "http-client"
+      }
+    ]
+  },
+  "http_clients": [
+    {
+      "tag": "http-client",
+      "detour": "trojan-out"
+    }
+  ],
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "/root/soft/sing-box/data/cache.db",
+      "cache_id": "",
+      "store_fakeip": false
+    }
+  },
+  "services": [
+    {
+        "type": "api",
+        "listen": "0.0.0.0",
+        "listen_port": 6789,
+        "secret": "xxxx",
+        "access_control_allow_private_network": true,
+        "dashboard": {
+            "enabled": true,
+            "path": "/root/soft/sing-box/data/dashboard",
+            "http_client": "http-client",
+            "update_interval": "1d"
+        }
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "tailscale",
+      "tag": "tailscale",
+      "state_directory": "/root/soft/sing-box/data/.tailscale",
+      "control_url": "https://xxxx:4000",
+      "accept_routes": false,
+      "advertise_routes": [
+        "192.168.2.0/24"
+      ],
+      "advertise_exit_node": true,
+      "advertise_tags": [],
+      "system_interface": false,
+      "udp_timeout": "5m",
+      "system_interface_mtu": 1280,
+      "domain_resolver": "cn-dns",
+      "detour": "direct-out"
+    }
+  ]
+
+}
+```
+
+
+
+
+
+
+
 ## logrotate
 
 ```
@@ -706,4 +1008,42 @@ crontab
 ```
 
 
+
+**Mac logrotate**
+
+/opt/homebrew/etc/logrotate.conf
+
+
+
+```
+ cat /opt/homebrew/etc/logrotate.d/nginx 
+/Users/lambda/software/docker/nginx/data/logs/*.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        /opt/homebrew/bin/docker compose -f /Users/lambda/software/docker/nginx/docker-compose.yaml exec -T nginx nginx -s reopen
+   endscript
+}
+
+```
+
+
+
+```sh
+brew services list
+
+Name      Status    User   File
+      
+logrotate scheduled lambda ~/Library/LaunchAgents/homebrew.mxcl.logrotate.plist
+```
+
+
+
+```sh
+launchctl unload ~/Library/LaunchAgents/homebrew.mxcl.logrotate.plist
+launchctl load ~/Library/LaunchAgents/homebrew.mxcl.logrotate.plist
+```
 
